@@ -1,0 +1,3045 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Inventario</title>
+    <!-- Iconos de Font Awesome -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+    />
+    <!-- Librería de Gráficos (Chart.js) -->
+
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+    <link rel="stylesheet" href="estilo.css" />
+    <!-- Favicon estándar -->
+    <link rel="icon" type="image/x-icon" href="img/favicon.ico" />
+
+    <!-- PNG para navegadores modernos -->
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="img/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="img/favicon-16x16.png"
+    />
+
+    <!-- Apple -->
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="img/apple-touch-icon.png"
+    />
+
+    <!-- Manifest -->
+    <link rel="manifest" href="img/site.webmanifest" />
+  </head>
+  <body>
+    <div class="dashboard-container">
+      <!-- Barra Lateral - THE HERMIT COCKTAIL BAR -->
+      <aside class="sidebar sidebar-bar">
+        <div class="logo-bar">
+          <i class="fas fa-cocktail"></i>
+          <span>The Hermit</span>
+          <small>Cocktail Bar</small>
+        </div>
+
+        <nav class="sidebar-nav">
+          <a href="#dashboard" class="active" data-section="dashboard">
+            <i class="fas fa-chart-line"></i> Dashboard
+          </a>
+          <a href="#menu" data-section="menu">
+            <i class="fas fa-glass-cheers"></i> Menú
+          </a>
+          <a href="#floorPlan" data-section="floorPlan">
+            <i class="fas fa-map"></i> Floor Plan
+          </a>
+          <a href="#cuentas" data-section="cuentas">
+            <i class="fas fa-receipt"></i> Cuentas
+          </a>
+          <a href="#recetas" data-section="recetas">
+            <i class="fas fa-book-open"></i> Recetas
+          </a>
+          <a href="#inventario" data-section="inventario">
+            <i class="fas fa-boxes"></i> Inventario
+          </a>
+          <a href="#compras" data-section="compras">
+            <i class="fas fa-shopping-cart"></i> Compras
+          </a>
+          <a href="#gastos" data-section="gastos">
+            <i class="fas fa-money-bill-wave"></i> Gastos
+          </a>
+          <a href="#cierre" data-section="cierre" class="admin-only">
+            <i class="fas fa-lock"></i> Cierre
+          </a>
+          <a href="#resumenes" data-section="resumenes">
+            <i class="fas fa-chart-pie"></i> Resúmenes
+          </a>
+          <a href="#configuracion" data-section="configuracion">
+            <i class="fas fa-cog"></i> Configuración
+          </a>
+          <a href="#" id="sidebarLogout" class="logout-link">
+            <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+          </a>
+        </nav>
+      </aside>
+
+      <!-- Contenido Principal -->
+      <main class="main-content">
+        <!-- Sección 0: Dashboard (Gráficos) -->
+        <section id="dashboard" class="content-section active">
+          <div class="section-header">
+            <h2>
+              <i class="fas fa-chart-line"></i> Dashboard - The Hermit Cocktail
+              Bar
+            </h2>
+            <div class="date-filter">
+              <select
+                id="dashboardRango"
+                onchange="handleDashboardRangoChange()"
+              >
+                <option value="hoy">Hoy</option>
+                <option value="semana">Esta Semana</option>
+                <option value="mes">Este Mes</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Botones de control -->
+          <div style="display: flex; gap: 10px; margin-bottom: 20px">
+            <button id="cargarDatosGraficosBtn" class="btn primary-btn">
+              <i class="fas fa-sync"></i> Actualizar Dashboard
+            </button>
+          </div>
+
+          <!-- Filtros de fecha -->
+          <div class="filter-bar" style="margin-bottom: 20px">
+            <div class="filter-group">
+              <label
+                for="dashFechaInicio"
+                style="font-weight: 500; margin-right: 8px"
+                >Desde:</label
+              >
+              <input type="date" id="dashFechaInicio" />
+            </div>
+            <div class="filter-group">
+              <label
+                for="dashFechaFin"
+                style="font-weight: 500; margin-right: 8px"
+                >Hasta:</label
+              >
+              <input type="date" id="dashFechaFin" />
+            </div>
+            <button class="btn primary-btn" onclick="aplicarFiltroDashboard()">
+              <i class="fas fa-filter"></i> Aplicar Filtro
+            </button>
+            <button
+              class="btn secondary-btn"
+              onclick="limpiarFiltroDashboard()"
+            >
+              <i class="fas fa-times"></i> Limpiar
+            </button>
+          </div>
+          <div
+            id="filtroActivo"
+            class="status-message info"
+            style="display: none; margin-bottom: 15px"
+          ></div>
+
+          <div id="statusDashboard" class="status-message"></div>
+
+          <!-- KPIs DEL BAR -->
+          <div class="kpi-grid">
+            <div class="kpi-card">
+              <div
+                class="kpi-icon"
+                style="background: rgba(124, 255, 90, 0.15)"
+              >
+                <i class="fas fa-dollar-sign" style="color: #7cff5a"></i>
+              </div>
+              <div class="kpi-content">
+                <span class="kpi-value" id="kpiVentas">$0</span>
+                <span class="kpi-label">Ventas del Día</span>
+              </div>
+            </div>
+            <div class="kpi-card">
+              <div
+                class="kpi-icon"
+                style="background: rgba(255, 107, 107, 0.15)"
+              >
+                <i class="fas fa-percent" style="color: #ff6b6b"></i>
+              </div>
+              <div class="kpi-content">
+                <span class="kpi-value" id="kpiPourCost">0%</span>
+                <span class="kpi-label">Pour Cost</span>
+              </div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-icon" style="background: rgba(79, 70, 229, 0.15)">
+                <i class="fas fa-chair" style="color: #4f46e5"></i>
+              </div>
+              <div class="kpi-content">
+                <span class="kpi-value" id="kpiOcupacion">0%</span>
+                <span class="kpi-label">Ocupación Mesas</span>
+              </div>
+            </div>
+            <div class="kpi-card">
+              <div
+                class="kpi-icon"
+                style="background: rgba(255, 179, 71, 0.15)"
+              >
+                <i class="fas fa-receipt" style="color: #ffb347"></i>
+              </div>
+              <div class="kpi-content">
+                <span class="kpi-value" id="kpiTicket">$0</span>
+                <span class="kpi-label">Ticket Promedio</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- RESUMEN EJECUTIVO -->
+          <div class="dashboard-section">
+            <h3 class="dashboard-section-title">
+              <i class="fas fa-bolt"></i> Resumen Ejecutivo
+            </h3>
+            <div class="stats-grid dashboard-summary">
+              <div class="stat-card highlight-card">
+                <div class="stat-icon" style="background: var(--success-light)">
+                  <i
+                    class="fas fa-arrow-trend-up"
+                    style="color: var(--success-color)"
+                  ></i>
+                </div>
+                <div class="stat-content">
+                  <div class="stat-value" id="totalVentas">$0</div>
+                  <div class="stat-label">Ingresos Totales</div>
+                </div>
+              </div>
+              <div class="stat-card highlight-card">
+                <div class="stat-icon" style="background: #dcfce7">
+                  <i class="fas fa-peso-sign" style="color: #16a34a"></i>
+                </div>
+                <div class="stat-content">
+                  <div class="stat-value" id="totalGanancias">$0</div>
+                  <div class="stat-label">Ganancia Neta</div>
+                </div>
+              </div>
+              <div class="stat-card highlight-card">
+                <div class="stat-icon" style="background: #e0e7ff">
+                  <i class="fas fa-percent" style="color: #4f46e5"></i>
+                </div>
+                <div class="stat-content">
+                  <div class="stat-value" id="totalRendimiento">0%</div>
+                  <div class="stat-label">Margen de Ganancia</div>
+                </div>
+              </div>
+              <div class="stat-card highlight-card">
+                <div class="stat-icon" style="background: #fef3c7">
+                  <i class="fas fa-box" style="color: #d97706"></i>
+                </div>
+                <div class="stat-content">
+                  <div class="stat-value" id="totalValorInventario">$0</div>
+                  <div class="stat-label">Valor Inventario</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- FLUJO DE CAJA -->
+          <div class="dashboard-section">
+            <h3 class="dashboard-section-title">
+              <i class="fas fa-wallet"></i> Flujo de Caja
+            </h3>
+            <div class="stats-grid dashboard-flow">
+              <div class="stat-card cash-card">
+                <div class="stat-icon" style="background: #dcfce7">
+                  <i class="fas fa-money-bill-wave" style="color: #16a34a"></i>
+                </div>
+                <div class="stat-content">
+                  <div class="stat-value" id="totalSaldoEfectivo">$0</div>
+                  <div class="stat-label">Saldo Efectivo</div>
+                </div>
+              </div>
+              <div class="stat-card cash-card">
+                <div class="stat-icon" style="background: #fce7f3">
+                  <i class="fas fa-mobile-alt" style="color: #db2777"></i>
+                </div>
+                <div class="stat-content">
+                  <div class="stat-value" id="totalSaldoNequi">$0</div>
+                  <div class="stat-label">Saldo Nequi</div>
+                </div>
+              </div>
+              <div class="stat-card cash-card">
+                <div class="stat-icon" style="background: #fee2e2">
+                  <i class="fas fa-minus-circle" style="color: #dc2626"></i>
+                </div>
+                <div class="stat-content">
+                  <div class="stat-value" id="totalGastos">$0</div>
+                  <div class="stat-label">Egresos (Gastos)</div>
+                </div>
+              </div>
+              <div class="stat-card cash-card">
+                <div class="stat-icon" style="background: #fef9c3">
+                  <i class="fas fa-shopping-cart" style="color: #ca8a04"></i>
+                </div>
+                <div class="stat-content">
+                  <div class="stat-value" id="totalCompras">$0</div>
+                  <div class="stat-label">Compras Proveedores</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- COSTOS E INVENTARIO -->
+          <div class="dashboard-section">
+            <h3 class="dashboard-section-title">
+              <i class="fas fa-boxes-stacked"></i> Costos y Inventario
+            </h3>
+            <div class="stats-grid dashboard-costs">
+              <div class="stat-card cost-card">
+                <div class="stat-icon" style="background: #f3e8ff">
+                  <i class="fas fa-tags" style="color: #9333ea"></i>
+                </div>
+                <div class="stat-content">
+                  <div class="stat-value" id="totalCostoVenta">$0</div>
+                  <div class="stat-label">Costo Mercancía Vendida</div>
+                </div>
+              </div>
+              <div class="stat-card cost-card">
+                <div class="stat-icon" style="background: #ffedd5">
+                  <i class="fas fa-clock" style="color: #ea580c"></i>
+                </div>
+                <div class="stat-content">
+                  <div class="stat-value" id="totalPendiente">$0</div>
+                  <div class="stat-label">Por Cobrar</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Gráficos -->
+          <div class="dashboard-section">
+            <h3 class="dashboard-section-title">
+              <i class="fas fa-chart-pie"></i> Análisis Gráfico
+            </h3>
+            <div class="charts-grid">
+              <div class="chart-container">
+                <h4 style="margin-bottom: 15px; color: var(--gray-600)">
+                  Resumen Financiero
+                </h4>
+                <canvas id="resumenFinancieroChart"></canvas>
+              </div>
+              <div class="chart-container">
+                <h4 style="margin-bottom: 15px; color: var(--gray-600)">
+                  Tendencias
+                </h4>
+                <canvas id="tendenciasChart"></canvas>
+              </div>
+              <div class="chart-container">
+                <h4 style="margin-bottom: 15px; color: var(--gray-600)">
+                  Métodos de Pago
+                </h4>
+                <canvas id="metodosPagoChart"></canvas>
+              </div>
+              <div class="chart-container">
+                <h4 style="margin-bottom: 15px; color: var(--gray-600)">
+                  Top Productos Vendidos
+                </h4>
+                <canvas id="topProductosChart"></canvas>
+              </div>
+              <div class="chart-container">
+                <h4 style="margin-bottom: 15px; color: var(--gray-600)">
+                  Gastos por Categoría
+                </h4>
+                <canvas id="gastosCategoriaChart"></canvas>
+              </div>
+              <div class="chart-container">
+                <h4 style="margin-bottom: 15px; color: var(--gray-600)">
+                  Inventario por Categoría
+                </h4>
+                <canvas id="inventarioCategoriaChart"></canvas>
+              </div>
+              <div class="chart-container">
+                <h4 style="margin-bottom: 15px; color: var(--gray-600)">
+                  Cliente Frecuente
+                </h4>
+                <canvas id="clienteFrecuenteChart"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Gráficos del Bar -->
+          <div class="dashboard-section">
+            <h3 class="dashboard-section-title">
+              <i class="fas fa-cocktail"></i> Análisis del Bar
+            </h3>
+            <div class="dashboard-charts">
+              <div class="chart-card">
+                <h3>Ventas por Hora</h3>
+                <canvas id="ventasHoraChart"></canvas>
+              </div>
+              <div class="chart-card">
+                <h3>Top Cócteles</h3>
+                <canvas id="topCocktailsChart"></canvas>
+              </div>
+              <div class="chart-card">
+                <h3>Sales Mix</h3>
+                <canvas id="salesMixChart"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Inventario Bajo -->
+          <div class="inventario-bajo-section">
+            <h3><i class="fas fa-exclamation-triangle"></i> Inventario Bajo</h3>
+            <div id="inventarioBajoList"></div>
+          </div>
+        </section>
+
+        <!-- Las demás secciones se mantienen igual -->
+        <!-- Sección 1: Inventario Actual -->
+        <!-- Sección 1: Inventario Actual -->
+        <section id="inventario" class="content-section">
+          <h2><i class="fas fa-cubes"></i> Inventario Actual</h2>
+          <p>Lista de todos los productos y su stock disponible.</p>
+
+          <div class="button-group">
+            <button id="cargarInventarioBtn" class="btn secondary-btn">
+              <i class="fas fa-sync"></i> Refrescar Inventario
+            </button>
+          </div>
+
+          <div class="filter-bar">
+            <div class="filter-group">
+              <input
+                type="text"
+                id="inventarioFiltro"
+                placeholder="Buscar por código o nombre..."
+                oninput="filtrarInventario()"
+              />
+            </div>
+            <div class="filter-group">
+              <select
+                id="inventarioFiltroCategoria"
+                onchange="filtrarInventario()"
+              >
+                <option value="">Todas las categorías</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label
+                for="inventarioOrdenar"
+                style="font-size: 0.75rem; display: block; margin-bottom: 2px"
+                ><i class="fas fa-sort"></i> Ordenar:</label
+              >
+              <select id="inventarioOrdenar" onchange="filtrarInventario()">
+                <option value="nombre-asc">Nombre A-Z</option>
+                <option value="nombre-desc">Nombre Z-A</option>
+                <option value="fecha-recientes">Más recientes</option>
+                <option value="fecha-antiguos">Más antiguos</option>
+              </select>
+            </div>
+            <button
+              class="btn secondary-btn"
+              onclick="limpiarFiltrosInventario()"
+            >
+              <i class="fas fa-times"></i> Limpiar
+            </button>
+          </div>
+
+          <div id="statusInventario" class="status-message"></div>
+
+          <!-- Tabla de Inventario -->
+          <div class="dashboard-section">
+            <h3 class="dashboard-section-title">
+              <i class="fas fa-list"></i> Lista de Productos
+            </h3>
+            <div class="data-table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Nombre</th>
+                    <th>Código</th>
+                    <th>Categoría</th>
+                    <th>Stock</th>
+                    <th>P. Compra</th>
+                    <th>P. Venta 1</th>
+                    <th>P. Venta 2</th>
+                    <th>P. Venta 3</th>
+                    <th>P. Venta 4</th>
+                  </tr>
+                </thead>
+                <tbody id="inventarioTableBody">
+                  <tr>
+                    <td colspan="9">
+                      Presiona "Refrescar Inventario" para cargar los datos.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <div class="pagination-bar" id="inventarioPagination">
+                <div class="pagination-info">
+                  Mostrando <span id="inventarioStart">0</span>-<span
+                    id="inventarioEnd"
+                    >0</span
+                  >
+                  de <span id="inventarioTotal">0</span>
+                </div>
+                <div class="pagination-controls">
+                  <select
+                    id="inventarioPageSize"
+                    onchange="cambiarPaginaInventario(0)"
+                    style="width: auto; padding: 4px 8px"
+                  >
+                    <option value="20" selected>20 por página</option>
+                    <option value="30">30 por página</option>
+                    <option value="50">50 por página</option>
+                  </select>
+                  <button
+                    class="btn-icon"
+                    onclick="cambiarPaginaInventario(-1)"
+                  >
+                    <i class="fas fa-chevron-left"></i>
+                  </button>
+                  <span id="inventarioPageInfo">Página 1</span>
+                  <button class="btn-icon" onclick="cambiarPaginaInventario(1)">
+                    <i class="fas fa-chevron-right"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="scroll-hint hidden" id="inventarioScrollHint">
+                <i class="fas fa-arrows-alt-h"></i> Desliza horizontalmente para
+                ver más columnas
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Sección 2: Registrar Producto -->
+        <section id="productos" class="content-section">
+          <h2><i class="fas fa-box-open"></i> Registrar Nuevo Producto</h2>
+          <p class="status-message info" style="display: block">
+            El ID del producto se generará automáticamente.
+          </p>
+          <form id="productoForm" class="form-grid">
+            <div class="form-group">
+              <label for="p_codigo">Código Único:</label>
+              <input type="text" id="p_codigo" required />
+            </div>
+            <div class="form-group">
+              <label for="p_nombre">Nombre:</label>
+              <input type="text" id="p_nombre" required />
+            </div>
+            <div class="form-group">
+              <label for="p_categoria">Categoría:</label>
+              <select id="p_categoria" required>
+                <option value="" disabled selected>
+                  Cargando categorías...
+                </option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="p_precio_compra">Precio Compra:</label>
+              <input
+                type="number"
+                id="p_precio_compra"
+                class="money-input"
+                required
+                placeholder="0"
+                value="0"
+              />
+            </div>
+            <div class="form-group">
+              <label for="p_precio_venta">Precio Venta:</label>
+              <input
+                type="number"
+                id="p_precio_venta"
+                class="money-input"
+                required
+                placeholder="0"
+                value="0"
+              />
+            </div>
+            <div class="form-group">
+              <label for="p_precio_venta_2">Precio Venta 2 (Promo):</label>
+              <input
+                type="number"
+                id="p_precio_venta_2"
+                class="money-input"
+                placeholder="0"
+                value="0"
+              />
+            </div>
+            <div class="form-group">
+              <label for="p_precio_venta_3">Precio Venta 3 (Promo):</label>
+              <input
+                type="number"
+                id="p_precio_venta_3"
+                class="money-input"
+                placeholder="0"
+                value="0"
+              />
+            </div>
+            <div class="form-group">
+              <label for="p_precio_venta_4">Precio Venta 4 (Promo):</label>
+              <input
+                type="number"
+                id="p_precio_venta_4"
+                class="money-input"
+                placeholder="0"
+                value="0"
+              />
+            </div>
+            <div class="form-group">
+              <label for="p_stock">Stock Inicial:</label>
+              <input
+                type="number"
+                id="p_stock"
+                required
+                min="0"
+                placeholder="0"
+                value="0"
+              />
+            </div>
+
+            <button type="submit" class="btn primary-btn full-width">
+              <i class="fas fa-save"></i> Registrar Nuevo Producto
+            </button>
+          </form>
+          <div id="statusProducto" class="status-message"></div>
+        </section>
+
+        <!-- Las demás secciones permanecen igual... -->
+        <!-- Sección 3: Categorías -->
+        <section id="categorias" class="content-section">
+          <h2><i class="fas fa-tags"></i> Gestión de Categorías</h2>
+          <form id="categoriaForm" class="form-grid-compact single-col">
+            <div class="form-group">
+              <label for="c_nombre">Nombre de la Categoría:</label>
+              <input
+                type="text"
+                id="c_nombre"
+                required
+                placeholder="Ej: Electrónica, Ropa, etc."
+              />
+            </div>
+            <button type="submit" class="btn secondary-btn">
+              <i class="fas fa-plus"></i> Agregar Categoría
+            </button>
+          </form>
+          <div id="statusCategoria" class="status-message"></div>
+
+          <h3>Categorías Existentes:</h3>
+          <ul id="listaCategorias">
+            <li>Cargando...</li>
+          </ul>
+        </section>
+
+        <!-- Sección 4: Compras -->
+        <section id="compras" class="content-section">
+          <h2><i class="fas fa-truck-loading"></i> Registro de Compras</h2>
+
+          <div id="statusCompras" class="status-message"></div>
+
+          <!-- BUSCAR PRODUCTO -->
+          <div class="pos-section">
+            <h3><i class="fas fa-search"></i> Buscar Producto</h3>
+            <div class="pos-search-wrapper">
+              <input
+                type="text"
+                id="coBuscar"
+                placeholder="Escanee o escriba el código y presione ENTER"
+                autocomplete="off"
+                disabled
+              />
+              <div id="coSugerencias" class="pos-suggestions hidden"></div>
+            </div>
+          </div>
+
+          <!-- CARRITO -->
+          <div class="pos-section">
+            <h3><i class="fas fa-shopping-cart"></i> Carrito de Compras</h3>
+            <div class="pos-table-wrapper">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Producto</th>
+                    <th>Código</th>
+                    <th>Precio</th>
+                    <th>Cant.</th>
+                    <th>Subtotal</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="coTabla"></tbody>
+              </table>
+            </div>
+            <!-- Mobile cards view -->
+            <div id="coCartCards" class="cart-cards"></div>
+          </div>
+
+          <!-- GRID INFERIOR -->
+          <div class="pos-bottom-grid">
+            <!-- RESUMEN -->
+            <div class="pos-section totals-box">
+              <h3><i class="fas fa-calculator"></i> Resumen</h3>
+
+              <div class="totals-grid compact">
+                <div class="row-between">
+                  <span>Subtotal</span>
+                  <strong>$<span id="coSubtotal">0</span></strong>
+                </div>
+
+                <div class="form-group small">
+                  <label>Descuento Global</label>
+                  <select id="coDescuentoGlobal">
+                    <option value="0">0%</option>
+                    <option value="5">5%</option>
+                    <option value="10">10%</option>
+                    <option value="15">15%</option>
+                    <option value="20">20%</option>
+                  </select>
+                </div>
+
+                <!-- Envío -->
+                <div class="domicilio-section" style="margin-bottom: 8px">
+                  <div class="form-group small">
+                    <label
+                      for="coEnvioCheckbox"
+                      style="
+                        display: flex;
+                        align-items: center;
+                        gap: 8px;
+                        cursor: pointer;
+                      "
+                    >
+                      <input
+                        type="checkbox"
+                        id="coEnvioCheckbox"
+                        style="width: auto; margin: 0"
+                      />
+                      <span>Habilitar envío</span>
+                    </label>
+                  </div>
+                  <div
+                    id="coEnvioInputs"
+                    class="hidden"
+                    style="margin-top: 8px"
+                  >
+                    <div class="form-group small">
+                      <label for="coEnvioDireccion">Dirección de entrega</label>
+                      <input
+                        type="text"
+                        id="coEnvioDireccion"
+                        placeholder="Ej: Calle 123 #45-67"
+                      />
+                    </div>
+                    <div class="form-group small">
+                      <label for="coEnvioValor">Valor del envío</label>
+                      <input
+                        type="text"
+                        id="coEnvioValor"
+                        class="money-input"
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Envío en resumen -->
+                <div
+                  class="row-between hidden"
+                  id="coEnvioRow"
+                  style="margin-bottom: 1em"
+                >
+                  <span>Envío</span>
+                  <strong>$<span id="coEnvio">0</span></strong>
+                </div>
+
+                <div class="total-final small">
+                  Total:
+                  <span>$<span id="coTotal">0</span></span>
+                </div>
+              </div>
+            </div>
+
+            <!-- PROVEEDOR Y PAGO -->
+            <div class="pos-section">
+              <h3><i class="fas fa-truck"></i> Datos del Proveedor</h3>
+
+              <div
+                class="customer-data-container"
+                style="
+                  margin-bottom: var(--space-3);
+                  padding-bottom: var(--space-3);
+                  border-bottom: 1px solid var(--gray-200);
+                "
+              >
+                <div class="form-group small">
+                  <label
+                    ><i class="fas fa-truck"></i> Nombre del Proveedor</label
+                  >
+                  <input type="text" id="coProveedor" placeholder="Proveedor" />
+                </div>
+
+                <div class="form-group small">
+                  <label><i class="fas fa-phone"></i> Teléfono</label>
+                  <input
+                    type="number"
+                    id="coProveedorTelefono"
+                    placeholder="Opcional"
+                  />
+                </div>
+              </div>
+
+              <div class="form-group small">
+                <label>Método de Pago</label>
+                <select id="coMetodoPago">
+                  <option value="efectivo">Efectivo</option>
+                  <option value="transferencia">Transferencia</option>
+                  <option value="credito">Crédito</option>
+                </select>
+              </div>
+
+              <div id="coBloqueEfectivo">
+                <div class="form-group small">
+                  <label>Monto entregado</label>
+                  <input
+                    type="text"
+                    id="coMontoRecibido"
+                    class="money-input"
+                    placeholder="0"
+                  />
+                </div>
+
+                <div id="coCambioContainer" class="pos-change compact">
+                  <span>Cambio:</span>
+                  <strong>$<span id="coCambio">0</span></strong>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                class="btn primary-btn full-width"
+                onclick="coConfirmarCompra()"
+                style="margin-top: 1rem"
+              >
+                <i class="fas fa-check-circle"></i> Confirmar Compra
+              </button>
+            </div>
+          </div>
+          <div id="statusCompra" class="status-message"></div>
+        </section>
+
+        <!-- Sección 5: Ventas -->
+        <section id="ventas" class="content-section">
+          <h2>
+            <i class="fas fa-cash-register"></i> Registro de Ventas
+            <!-- Indicador de ventas offline en sección de ventas -->
+            <span
+              id="offlineIndicatorVentas"
+              class="offline-indicator"
+              style="
+                display: inline-block;
+                margin-left: 15px;
+                vertical-align: middle;
+              "
+              onclick="mostrarVentasOffline()"
+            >
+              <i class="fas fa-cloud-upload-alt"></i>
+              <span id="offlineCountVentas">0</span>
+            </span>
+          </h2>
+
+          <button
+            type="button"
+            id="btnReabrirUltimaFactura"
+            class="btn secondary-btn hidden"
+            onclick="reabrirUltimaFactura()"
+            style="margin-bottom: 0.5rem"
+          >
+            <i class="fas fa-file-invoice"></i> Última Factura
+          </button>
+
+          <div id="statusVentas" class="status-message"></div>
+
+          <!-- BUSCAR PRODUCTO -->
+          <div class="pos-section">
+            <h3><i class="fas fa-search"></i> Buscar Producto</h3>
+            <div class="pos-search-wrapper">
+              <input
+                type="text"
+                id="posBuscar"
+                placeholder="Escanee o escriba el código y presione ENTER"
+                autocomplete="off"
+                disabled
+              />
+              <div id="posSugerencias" class="pos-suggestions hidden"></div>
+            </div>
+          </div>
+
+          <!-- CARRITO -->
+          <div class="pos-section">
+            <h3><i class="fas fa-shopping-cart"></i> Carrito de Compras</h3>
+            <!-- Desktop table view -->
+            <div class="pos-table-wrapper">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Producto</th>
+                    <th>Código</th>
+                    <th>Precio</th>
+                    <th>Cant.</th>
+                    <th>Desc %</th>
+                    <th>Subtotal</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="posTabla"></tbody>
+              </table>
+            </div>
+            <!-- Mobile cards view -->
+            <div id="posCartCards" class="cart-cards"></div>
+          </div>
+
+          <!-- GRID INFERIOR -->
+          <div class="pos-bottom-grid">
+            <!-- RESUMEN -->
+            <div class="pos-section totals-box">
+              <h3><i class="fas fa-calculator"></i> Resumen</h3>
+
+              <div class="totals-grid compact">
+                <div class="row-between">
+                  <span>Subtotal</span>
+                  <strong>$<span id="posSubtotal">0</span></strong>
+                </div>
+
+                <div class="form-group small">
+                  <label>Descuento Global</label>
+                  <select id="posDescuentoGlobal">
+                    <option value="0">0%</option>
+                    <option value="5">5%</option>
+                    <option value="10">10%</option>
+                    <option value="15">15%</option>
+                    <option value="20">20%</option>
+                    <option value="25">25%</option>
+                    <option value="30">30%</option>
+                  </select>
+                </div>
+
+                <!-- Subtotal con descuento -->
+                <div class="row-between hidden" id="posSubtotalDescuentoRow">
+                  <span>Subtotal con descuento</span>
+                  <strong>$<span id="posSubtotalConDescuento">0</span></strong>
+                </div>
+
+                <!-- Comisión -->
+                <div
+                  id="posComisionDetalleContainer"
+                  class="row-between hidden"
+                  style="margin-bottom: 1em"
+                >
+                  <span
+                    >Comisión (<span id="posComisionPorcentaje">0</span>%)</span
+                  >
+                  <strong>$<span id="posComisionDetalle">0</span></strong>
+                </div>
+
+                <!-- Domicilio -->
+                <div class="domicilio-section" style="margin-bottom: 8px">
+                  <div class="form-group small">
+                    <label
+                      for="domicilioCheckbox"
+                      style="
+                        display: flex;
+                        align-items: center;
+                        gap: 8px;
+                        cursor: pointer;
+                      "
+                    >
+                      <input
+                        type="checkbox"
+                        id="domicilioCheckbox"
+                        style="width: auto; margin: 0"
+                      />
+                      <span>Habilitar domicilio</span>
+                    </label>
+                  </div>
+                  <div
+                    id="domicilioInputs"
+                    class="hidden"
+                    style="margin-top: 8px"
+                  >
+                    <div class="form-group small">
+                      <label for="domicilioDireccion"
+                        >Dirección de entrega</label
+                      >
+                      <input
+                        type="text"
+                        id="domicilioDireccion"
+                        placeholder="Ej: calle 123 #45-67"
+                      />
+                    </div>
+                    <div class="form-group small">
+                      <label for="domicilioValor">Valor del domicilio</label>
+                      <input
+                        type="text"
+                        id="domicilioValor"
+                        class="money-input"
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Domicilio en resumen -->
+                <div
+                  class="row-between hidden"
+                  id="posDomicilioRow"
+                  style="margin-bottom: 1em"
+                >
+                  <span>Domicilio</span>
+                  <strong>$<span id="posDomicilio">0</span></strong>
+                </div>
+
+                <div class="total-final small">
+                  Total:
+                  <span>$<span id="posTotal">0</span></span>
+                </div>
+              </div>
+            </div>
+
+            <!-- MÉTODO DE PAGO -->
+            <div class="pos-section">
+              <h3><i class="fas fa-credit-card"></i> Datos del Pago</h3>
+
+              <!-- Cliente -->
+              <div
+                class="customer-data-container"
+                style="
+                  margin-bottom: var(--space-3);
+                  padding-bottom: var(--space-3);
+                  border-bottom: 1px solid var(--gray-200);
+                "
+              >
+                <div class="form-group small">
+                  <label><i class="fas fa-user"></i> Nombre del Cliente</label>
+                  <input type="text" id="posCliente" placeholder="Mostrador" />
+                </div>
+
+                <div class="customer-data-row">
+                  <div class="form-group small">
+                    <label><i class="fas fa-id-card"></i> Cédula/NIT</label>
+                    <input
+                      type="number"
+                      id="posClienteDocumento"
+                      placeholder="Opcional"
+                    />
+                  </div>
+                  <div class="form-group small">
+                    <label><i class="fas fa-phone"></i> Teléfono</label>
+                    <input
+                      type="number"
+                      id="posClienteTelefono"
+                      placeholder="Opcional"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <!-- Método de pago -->
+              <div class="form-group small">
+                <label>Método de Pago</label>
+                <select id="posMetodoPago">
+                  <option value="efectivo">Efectivo</option>
+                  <option value="tarjeta">Tarjeta</option>
+                  <option value="transferencia">Transferencia (Nequi)</option>
+                  <option value="sistecredito">Sistecrédito</option>
+                  <option value="addi">Addi</option>
+                </select>
+              </div>
+
+              <!-- Efectivo -->
+              <div id="bloqueEfectivo">
+                <div class="form-group small">
+                  <label>Monto entregado</label>
+                  <input
+                    type="text"
+                    id="posMontoRecibido"
+                    class="money-input"
+                    placeholder="0"
+                  />
+                </div>
+
+                <div id="posCambioContainer" class="pos-change compact">
+                  <span>Cambio:</span>
+                  <strong>$<span id="posCambio">0</span></strong>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                class="btn primary-btn full-width"
+                onclick="posConfirmarVenta()"
+                style="margin-top: 1rem"
+              >
+                <i class="fas fa-check-circle"></i> Confirmar Venta
+              </button>
+            </div>
+          </div>
+          <div id="statusVenta" class="status-message"></div>
+        </section>
+
+        <!-- Sección 6: Gastos -->
+        <!-- Domicilio de entrega deberá habilitarse en Ventas en un siguiente paso -->
+        <section id="gastos" class="content-section">
+          <h2>
+            <i class="fas fa-money-bill-wave"></i> Gastos / Aprovechamientos
+          </h2>
+          <div class="button-group">
+            <button
+              id="btnNuevoGasto"
+              class="btn primary-btn"
+              onclick="mostrarModalGasto()"
+            >
+              <i class="fas fa-minus-circle"></i> Registrar Gasto
+            </button>
+            <button
+              id="btnNuevoAprovecho"
+              class="btn primary-btn"
+              onclick="mostrarModalAprovecho()"
+            >
+              <i class="fas fa-plus-circle"></i> Registrar Aprovechamiento
+            </button>
+            <button
+              id="btnRefrescarGastos"
+              class="btn secondary-btn"
+              onclick="loadGastos()"
+            >
+              <i class="fas fa-sync"></i> Actualizar Lista
+            </button>
+          </div>
+          <div class="filter-bar">
+            <div class="filter-group">
+              <input
+                type="date"
+                id="gastosFiltroFecha"
+                onchange="aplicarFiltrosGastos()"
+              />
+            </div>
+            <div class="filter-group">
+              <select id="gastosFiltroTipo" onchange="aplicarFiltrosGastos()">
+                <option value="">Todos los tipos</option>
+                <option value="Gasto">Gastos</option>
+                <option value="Aprovecho">Aprovechamientos</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label
+                for="gastosFiltroMetodo"
+                style="font-size: 0.75rem; display: block; margin-bottom: 2px"
+                ><i class="fas fa-money-bill-wave"></i> Método:</label
+              >
+              <select id="gastosFiltroMetodo" onchange="aplicarFiltrosGastos()">
+                <option value="">Todos los métodos</option>
+                <option value="efectivo">Efectivo</option>
+                <option value="nequi">Nequi</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label
+                for="gastosOrdenar"
+                style="font-size: 0.75rem; display: block; margin-bottom: 2px"
+                ><i class="fas fa-sort"></i> Ordenar:</label
+              >
+              <select id="gastosOrdenar" onchange="aplicarFiltrosGastos()">
+                <option value="fecha-desc">Más recientes</option>
+                <option value="fecha-asc">Más antiguos</option>
+                <option value="monto-desc">Mayor monto</option>
+                <option value="monto-asc">Menor monto</option>
+              </select>
+            </div>
+            <button class="btn secondary-btn" onclick="limpiarFiltrosGastos()">
+              <i class="fas fa-times"></i> Limpiar
+            </button>
+          </div>
+          <div id="statusGastos" class="status-message"></div>
+
+          <!-- Tabla de Gastos -->
+          <div class="dashboard-section">
+            <h3 class="dashboard-section-title">
+              <i class="fas fa-list"></i> Registro de Movimientos
+            </h3>
+            <div class="data-table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Tipo</th>
+                    <th>Fecha</th>
+                    <th>Categoría</th>
+                    <th>Concepto</th>
+                    <th>Método</th>
+                    <th>Monto</th>
+                    <th>Usuario</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="gastosTableBody">
+                  <tr>
+                    <td colspan="8">Cargando...</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div class="pagination-bar" id="gastosPagination">
+                <div class="pagination-info">
+                  Mostrando <span id="gastosStart">0</span>-<span id="gastosEnd"
+                    >0</span
+                  >
+                  de <span id="gastosTotal">0</span>
+                </div>
+                <div class="pagination-controls">
+                  <select
+                    id="gastosPageSize"
+                    onchange="cambiarPaginaGastos(0)"
+                    style="width: auto; padding: 4px 8px"
+                  >
+                    <option value="20" selected>20 por página</option>
+                    <option value="30">30 por página</option>
+                    <option value="50">50 por página</option>
+                  </select>
+                  <button class="btn-icon" onclick="cambiarPaginaGastos(-1)">
+                    <i class="fas fa-chevron-left"></i>
+                  </button>
+                  <span id="gastosPageInfo">Página 1</span>
+                  <button class="btn-icon" onclick="cambiarPaginaGastos(1)">
+                    <i class="fas fa-chevron-right"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Sección 7: Resúmenes -->
+        <section id="resumenes" class="content-section">
+          <h2><i class="fas fa-list-alt"></i> Resúmenes</h2>
+
+          <div class="button-group">
+            <button id="resumenVentasBtn" class="btn secondary-btn">
+              <i class="fas fa-chart-bar"></i> Ventas
+            </button>
+            <button id="resumenComprasBtn" class="btn secondary-btn">
+              <i class="fas fa-chart-bar"></i> Compras
+            </button>
+            <button
+              id="resumenCierresBtn"
+              class="btn secondary-btn"
+              onclick="loadHistorialCierres()"
+            >
+              <i class="fas fa-history"></i> Cierres
+            </button>
+          </div>
+
+          <div class="filter-bar">
+            <div class="filter-group">
+              <input
+                type="date"
+                id="resumenFiltroFecha"
+                onchange="filtrarResumen()"
+              />
+            </div>
+            <div class="filter-group">
+              <label
+                for="resumenFiltroMetodo"
+                style="font-size: 0.75rem; display: block; margin-bottom: 2px"
+                ><i class="fas fa-money-bill-wave"></i> Método:</label
+              >
+              <select id="resumenFiltroMetodo" onchange="filtrarResumen()">
+                <option value="">Todos los métodos</option>
+                <option value="efectivo">Efectivo</option>
+                <option value="transferencia">Transferencia</option>
+                <option value="tarjeta">Tarjeta</option>
+                <option value="sistecredito">Sistecredito</option>
+                <option value="addi">Addi</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label
+                for="resumenOrdenar"
+                style="font-size: 0.75rem; display: block; margin-bottom: 2px"
+                ><i class="fas fa-sort"></i> Ordenar:</label
+              >
+              <select id="resumenOrdenar" onchange="filtrarResumen()">
+                <option value="fecha-desc">Más recientes</option>
+                <option value="fecha-asc">Más antiguos</option>
+                <option value="total-desc">Mayor total</option>
+                <option value="total-asc">Menor total</option>
+              </select>
+            </div>
+            <button class="btn secondary-btn" onclick="limpiarFiltrosResumen()">
+              <i class="fas fa-times"></i> Limpiar
+            </button>
+          </div>
+
+          <div id="statusResumen" class="status-message"></div>
+
+          <div class="dashboard-section">
+            <h3 class="dashboard-section-title">
+              <i class="fas fa-list"></i> Detalle de Registros
+            </h3>
+            <div class="data-table-container">
+              <table class="data-table hidden" id="resumenTable">
+                <thead></thead>
+                <tbody id="resumenTableBody"></tbody>
+              </table>
+              <div class="pagination-bar" id="resumenPagination">
+                <div class="pagination-info">
+                  Mostrando <span id="resumenStart">0</span>-<span
+                    id="resumenEnd"
+                    >0</span
+                  >
+                  de <span id="resumenTotal">0</span>
+                </div>
+                <div class="pagination-controls">
+                  <select
+                    id="resumenPageSize"
+                    onchange="cambiarPaginaResumen(0)"
+                    style="width: auto; padding: 4px 8px"
+                  >
+                    <option value="20" selected>20 por página</option>
+                    <option value="30">30 por página</option>
+                    <option value="50">50 por página</option>
+                  </select>
+                  <button class="btn-icon" onclick="cambiarPaginaResumen(-1)">
+                    <i class="fas fa-chevron-left"></i>
+                  </button>
+                  <span id="resumenPageInfo">Página 1</span>
+                  <button class="btn-icon" onclick="cambiarPaginaResumen(1)">
+                    <i class="fas fa-chevron-right"></i>
+                  </button>
+                </div>
+              </div>
+
+              <table class="data-table hidden" id="historialCierresTable">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Base Ef.</th>
+                    <th>Real Ef.</th>
+                    <th>Dif. Ef.</th>
+                    <th>Base Bk.</th>
+                    <th>Real Bk.</th>
+                    <th>Dif. Bk.</th>
+                    <th>Usuario</th>
+                  </tr>
+                </thead>
+                <tbody id="historialCierresBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- Sección: Cierre de Caja -->
+        <section id="cierre" class="content-section">
+          <h2><i class="fas fa-lock"></i> Cierre de Caja Diario</h2>
+          <p>
+            Verifica y guarda el balance de efectivo y transacciones bancarias
+            del día.
+          </p>
+
+          <!-- Resumen del Día -->
+          <div class="dashboard-section">
+            <h3 class="dashboard-section-title">
+              <i class="fas fa-chart-pie"></i> Resumen del Día
+            </h3>
+
+            <!-- Stats Grid -->
+            <div class="stats-grid dashboard-summary" style="gap: 1rem">
+              <!-- Ventas Efectivo -->
+              <div
+                class="stat-card highlight-card"
+                style="padding: 1rem 1.25rem"
+              >
+                <div
+                  class="stat-icon"
+                  style="
+                    background: #dcfce7;
+                    width: 48px;
+                    height: 48px;
+                    min-width: 48px;
+                  "
+                >
+                  <i class="fas fa-money-bill-wave" style="color: #16a34a"></i>
+                </div>
+                <div class="stat-content">
+                  <div
+                    class="stat-value"
+                    id="cierreVentasEfectivo"
+                    style="font-size: 1.25rem"
+                  >
+                    $0
+                  </div>
+                  <div class="stat-label">Ventas Efectivo</div>
+                </div>
+              </div>
+
+              <!-- Ventas Banco -->
+              <div
+                class="stat-card highlight-card"
+                style="padding: 1rem 1.25rem"
+              >
+                <div
+                  class="stat-icon"
+                  style="
+                    background: #fce7f3;
+                    width: 48px;
+                    height: 48px;
+                    min-width: 48px;
+                  "
+                >
+                  <i class="fas fa-mobile-alt" style="color: #db2777"></i>
+                </div>
+                <div class="stat-content">
+                  <div
+                    class="stat-value"
+                    id="cierreVentasBanco"
+                    style="font-size: 1.25rem"
+                  >
+                    $0
+                  </div>
+                  <div class="stat-label">Ventas Banco</div>
+                </div>
+              </div>
+
+              <!-- Aprovechos Efectivo -->
+              <div
+                class="stat-card highlight-card"
+                style="padding: 1rem 1.25rem"
+              >
+                <div
+                  class="stat-icon"
+                  style="
+                    background: #d1fae5;
+                    width: 48px;
+                    height: 48px;
+                    min-width: 48px;
+                  "
+                >
+                  <i class="fas fa-money-bill-wave" style="color: #059669"></i>
+                </div>
+                <div class="stat-content">
+                  <div
+                    class="stat-value"
+                    id="cierreAprovechosEfectivo"
+                    style="font-size: 1.25rem; color: #059669"
+                  >
+                    $0
+                  </div>
+                  <div class="stat-label">Aprovechos Efectivo</div>
+                </div>
+              </div>
+
+              <!-- Aprovechos Nequi -->
+              <div
+                class="stat-card highlight-card"
+                style="padding: 1rem 1.25rem"
+              >
+                <div
+                  class="stat-icon"
+                  style="
+                    background: #fce7f3;
+                    width: 48px;
+                    height: 48px;
+                    min-width: 48px;
+                  "
+                >
+                  <i class="fas fa-mobile-alt" style="color: #db2777"></i>
+                </div>
+                <div class="stat-content">
+                  <div
+                    class="stat-value"
+                    id="cierreAprovechosNequi"
+                    style="font-size: 1.25rem; color: #db2777"
+                  >
+                    $0
+                  </div>
+                  <div class="stat-label">Aprovechos Nequi</div>
+                </div>
+              </div>
+
+              <!-- Gastos Efectivo -->
+              <div
+                class="stat-card highlight-card"
+                style="padding: 1rem 1.25rem"
+              >
+                <div
+                  class="stat-icon"
+                  style="
+                    background: #fee2e2;
+                    width: 48px;
+                    height: 48px;
+                    min-width: 48px;
+                  "
+                >
+                  <i class="fas fa-arrow-up" style="color: #dc2626"></i>
+                </div>
+                <div class="stat-content">
+                  <div
+                    class="stat-value"
+                    id="cierreGastosEfectivo"
+                    style="font-size: 1.25rem; color: #dc2626"
+                  >
+                    $0
+                  </div>
+                  <div class="stat-label">Gastos Efec.</div>
+                </div>
+              </div>
+
+              <!-- Gastos Banco -->
+              <div
+                class="stat-card highlight-card"
+                style="padding: 1rem 1.25rem"
+              >
+                <div
+                  class="stat-icon"
+                  style="
+                    background: #ffedd5;
+                    width: 48px;
+                    height: 48px;
+                    min-width: 48px;
+                  "
+                >
+                  <i class="fas fa-minus" style="color: #ea580c"></i>
+                </div>
+                <div class="stat-content">
+                  <div
+                    class="stat-value"
+                    id="cierreGastosBanco"
+                    style="font-size: 1.25rem; color: #dc2626"
+                  >
+                    $0
+                  </div>
+                  <div class="stat-label">Gastos Banco</div>
+                </div>
+              </div>
+
+              <!-- Total Ingresos -->
+              <div
+                class="stat-card highlight-card"
+                style="padding: 1rem 1.25rem; background: #dcfce7"
+              >
+                <div
+                  class="stat-icon"
+                  style="
+                    background: #bbf7d0;
+                    width: 48px;
+                    height: 48px;
+                    min-width: 48px;
+                  "
+                >
+                  <i class="fas fa-arrow-trend-up" style="color: #16a34a"></i>
+                </div>
+                <div class="stat-content">
+                  <div
+                    class="stat-value"
+                    id="cierreTotalIngresos"
+                    style="font-size: 1.25rem; color: #16a34a"
+                  >
+                    $0
+                  </div>
+                  <div class="stat-label">Total Ingresos</div>
+                </div>
+              </div>
+
+              <!-- Total Egresos -->
+              <div
+                class="stat-card highlight-card"
+                style="padding: 1rem 1.25rem; background: #fee2e2"
+              >
+                <div
+                  class="stat-icon"
+                  style="
+                    background: #fecaca;
+                    width: 48px;
+                    height: 48px;
+                    min-width: 48px;
+                  "
+                >
+                  <i class="fas fa-arrow-trend-down" style="color: #dc2626"></i>
+                </div>
+                <div class="stat-content">
+                  <div
+                    class="stat-value"
+                    id="cierreTotalEgresos"
+                    style="font-size: 1.25rem; color: #dc2626"
+                  >
+                    $0
+                  </div>
+                  <div class="stat-label">Total Egresos</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Formulario de Cierre -->
+          <div class="dashboard-section">
+            <h3 class="dashboard-section-title">
+              <i class="fas fa-calculator"></i> Reconciliación
+            </h3>
+
+            <div
+              style="
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                gap: 1.5rem;
+              "
+            >
+              <!-- Bloque Efectivo -->
+              <div class="card-box" style="padding: 1.5rem">
+                <h3
+                  style="
+                    margin-bottom: 1rem;
+                    padding-bottom: 0.5rem;
+                    border-bottom: 1px solid var(--gray-200);
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                  "
+                >
+                  <i class="fas fa-money-bill-wave" style="color: #16a34a"></i>
+                  Reconciliación Efectivo
+                </h3>
+                <div class="form-group">
+                  <label for="c_base">Base (Fondo Inicial):</label>
+                  <input
+                    type="text"
+                    id="c_base"
+                    class="money-input"
+                    required
+                    placeholder="0"
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="c_real">Efectivo Físico Contado:</label>
+                  <input
+                    type="text"
+                    id="c_real"
+                    class="money-input"
+                    required
+                    placeholder="0"
+                  />
+                </div>
+                <div
+                  style="
+                    background: var(--primary-light);
+                    padding: 1rem;
+                    border-radius: var(--radius);
+                    margin-top: 1rem;
+                  "
+                >
+                  <div
+                    style="
+                      display: flex;
+                      justify-content: space-between;
+                      margin-bottom: 0.5rem;
+                    "
+                  >
+                    <span>Efectivo Esperado:</span>
+                    <strong id="cierreEsperado">$0</strong>
+                  </div>
+                  <div
+                    style="
+                      display: flex;
+                      justify-content: space-between;
+                      font-weight: 700;
+                    "
+                  >
+                    <span>Diferencia:</span>
+                    <span id="cierreDiferencia">$0</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Bloque Banco -->
+              <div class="card-box" style="padding: 1.5rem">
+                <h3
+                  style="
+                    margin-bottom: 1rem;
+                    padding-bottom: 0.5rem;
+                    border-bottom: 1px solid var(--gray-200);
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                  "
+                >
+                  <i class="fas fa-university" style="color: #db2777"></i>
+                  Reconciliación Banco/Nequi
+                </h3>
+                <div class="form-group">
+                  <label for="c_banco_base">Saldo Inicial (Base Banco):</label>
+                  <input
+                    type="text"
+                    id="c_banco_base"
+                    class="money-input"
+                    required
+                    placeholder="0"
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="c_banco_real">Saldo Final (Verificado):</label>
+                  <input
+                    type="text"
+                    id="c_banco_real"
+                    class="money-input"
+                    required
+                    placeholder="0"
+                  />
+                </div>
+                <div
+                  style="
+                    background: var(--primary-light);
+                    padding: 1rem;
+                    border-radius: var(--radius);
+                    margin-top: 1rem;
+                  "
+                >
+                  <div
+                    style="
+                      display: flex;
+                      justify-content: space-between;
+                      margin-bottom: 0.5rem;
+                    "
+                  >
+                    <span>Banco Esperado:</span>
+                    <strong id="cierreBancoEsperado">$0</strong>
+                  </div>
+                  <div
+                    style="
+                      display: flex;
+                      justify-content: space-between;
+                      font-weight: 700;
+                    "
+                  >
+                    <span>Diferencia:</span>
+                    <span id="cierreBancoDiferencia">$0</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style="margin-top: 1.5rem">
+              <button
+                type="button"
+                onclick="ejecutarCierre(event)"
+                class="btn primary-btn"
+                style="width: 100%"
+              >
+                <i class="fas fa-save"></i> Confirmar y Guardar Cierre
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Sección: Conciliación de Créditos -->
+        <section id="conciliacion" class="content-section">
+          <h2><i class="fas fa-check-double"></i> Conciliación de Créditos</h2>
+          <p>
+            Confirma el ingreso de los pagos realizados por medios electrónicos
+            o créditos.
+          </p>
+
+          <div class="button-group">
+            <button
+              id="btnRefrescarConciliacion"
+              class="btn secondary-btn"
+              onclick="loadConciliacion()"
+            >
+              <i class="fas fa-sync"></i> Actualizar Lista
+            </button>
+          </div>
+
+          <div class="filter-bar">
+            <div class="filter-group">
+              <input
+                type="date"
+                id="conciliacionFiltroFecha"
+                onchange="aplicarFiltrosConciliacion()"
+              />
+            </div>
+            <div class="filter-group">
+              <label
+                for="conciliacionFiltroMetodo"
+                style="font-size: 0.75rem; display: block; margin-bottom: 2px"
+                ><i class="fas fa-money-bill-wave"></i> Método:</label
+              >
+              <select
+                id="conciliacionFiltroMetodo"
+                onchange="aplicarFiltrosConciliacion()"
+              >
+                <option value="">Todos los métodos</option>
+                <option value="addi">Addi</option>
+                <option value="sistecredito">Sistecredito</option>
+                <option value="tarjeta">Tarjeta</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label
+                for="conciliacionOrdenar"
+                style="font-size: 0.75rem; display: block; margin-bottom: 2px"
+                ><i class="fas fa-sort"></i> Ordenar:</label
+              >
+              <select
+                id="conciliacionOrdenar"
+                onchange="aplicarFiltrosConciliacion()"
+              >
+                <option value="fecha-desc">Más recientes</option>
+                <option value="fecha-asc">Más antiguos</option>
+                <option value="total-desc">Mayor total</option>
+                <option value="total-asc">Menor total</option>
+              </select>
+            </div>
+            <button
+              class="btn secondary-btn"
+              onclick="limpiarFiltrosConciliacion()"
+            >
+              <i class="fas fa-times"></i> Limpiar
+            </button>
+          </div>
+
+          <div id="statusConciliacion" class="status-message"></div>
+
+          <!-- Tabla de Conciliación -->
+          <div class="dashboard-section">
+            <h3 class="dashboard-section-title">
+              <i class="fas fa-list"></i> Ventas Pendientes
+            </h3>
+            <div class="data-table-container">
+              <table class="data-table" id="conciliacionTable">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Fecha</th>
+                    <th>Método</th>
+                    <th>Total</th>
+                    <th>Estado</th>
+                    <th>Acción</th>
+                  </tr>
+                </thead>
+                <tbody id="conciliacionTableBody"></tbody>
+              </table>
+              <div class="pagination-bar" id="conciliacionPagination">
+                <div class="pagination-info">
+                  Mostrando <span id="conciliacionStart">0</span>-<span
+                    id="conciliacionEnd"
+                    >0</span
+                  >
+                  de <span id="conciliacionTotal">0</span>
+                </div>
+                <div class="pagination-controls">
+                  <select
+                    id="conciliacionPageSize"
+                    onchange="cambiarPaginaConciliacion(0)"
+                    style="width: auto; padding: 4px 8px"
+                  >
+                    <option value="20" selected>20 por página</option>
+                    <option value="30">30 por página</option>
+                    <option value="50">50 por página</option>
+                  </select>
+                  <button
+                    class="btn-icon"
+                    onclick="cambiarPaginaConciliacion(-1)"
+                  >
+                    <i class="fas fa-chevron-left"></i>
+                  </button>
+                  <span id="conciliacionPageInfo">Página 1</span>
+                  <button
+                    class="btn-icon"
+                    onclick="cambiarPaginaConciliacion(1)"
+                  >
+                    <i class="fas fa-chevron-right"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Sección 7: Configuración -->
+        <section id="configuracion" class="content-section">
+          <h2><i class="fas fa-cog"></i> Configuración de Base de Datos</h2>
+
+          <div class="dashboard-section">
+            <h3 class="dashboard-section-title">
+              <i class="fas fa-database"></i> Gestión de Base de Datos
+            </h3>
+
+            <div
+              style="
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                gap: 1.5rem;
+              "
+            >
+              <!-- Card: Iniciar DB -->
+              <div class="config-card">
+                <h3>
+                  <i
+                    class="fas fa-play-circle"
+                    style="color: var(--success-color)"
+                  ></i>
+                  Iniciar Base de Datos
+                </h3>
+                <p>
+                  Esta acción creará/verificará las pestañas necesarias en
+                  Google Sheets para el funcionamiento del sistema.
+                </p>
+                <button id="iniciarDBBtn" class="btn primary-btn">
+                  <i class="fas fa-play-circle"></i> Iniciar Base de Datos
+                </button>
+              </div>
+
+              <!-- Card: Resetear DB -->
+              <div class="config-card warning-card">
+                <h3>
+                  <i
+                    class="fas fa-exclamation-triangle"
+                    style="color: var(--danger-color)"
+                  ></i>
+                  Resetear Base de Datos
+                </h3>
+                <p style="color: var(--danger-color); font-weight: 600">
+                  ¡ADVERTENCIA! Esta acción eliminará TODOS los datos
+                  existentes.
+                </p>
+                <button id="resetDBBtn" class="btn danger-btn">
+                  <i class="fas fa-sync-alt"></i> Resetear Base de Datos
+                </button>
+              </div>
+            </div>
+
+            <div
+              id="statusConfig"
+              class="status-message"
+              style="margin-top: 1.5rem"
+            ></div>
+          </div>
+        </section>
+
+        <!-- Sección: Generador de Etiquetas -->
+        <section id="etiquetas" class="content-section">
+          <h2><i class="fas fa-tags"></i> Generador de Etiquetas</h2>
+
+          <!-- Buscador de productos -->
+          <div class="pos-section">
+            <h3><i class="fas fa-search"></i> Buscar Producto</h3>
+            <div class="pos-search-wrapper">
+              <input
+                type="text"
+                id="etiquetaBuscar"
+                placeholder="Escriba el nombre o código del producto"
+                autocomplete="off"
+              />
+              <div
+                id="etiquetaSugerencias"
+                class="pos-suggestions hidden"
+              ></div>
+            </div>
+          </div>
+
+          <!-- Formulario de producto -->
+          <div class="pos-section">
+            <h3><i class="fas fa-box"></i> Producto Seleccionado</h3>
+            <div class="form-grid" style="margin-top: var(--space-3)">
+              <div class="form-group">
+                <label for="etiquetaProducto">Producto</label>
+                <input
+                  type="text"
+                  id="etiquetaProducto"
+                  readonly
+                  placeholder="Busque un producto..."
+                />
+                <input type="hidden" id="etiquetaProductoId" />
+              </div>
+              <div class="form-group">
+                <label for="etiquetaCodigo">Código de Barras</label>
+                <input type="text" id="etiquetaCodigo" readonly />
+              </div>
+              <div class="form-group">
+                <label for="etiquetaPrecio">Precio Venta</label>
+                <input
+                  type="text"
+                  id="etiquetaPrecio"
+                  class="money-input"
+                  readonly
+                />
+              </div>
+              <div class="form-group">
+                <label for="etiquetaCantidad">Cantidad</label>
+                <input
+                  type="number"
+                  id="etiquetaCantidad"
+                  value="1"
+                  min="1"
+                  max="50"
+                />
+              </div>
+              <div class="form-group" style="align-self: flex-end">
+                <button
+                  type="button"
+                  class="btn primary-btn"
+                  onclick="etiquetaAgregar()"
+                >
+                  <i class="fas fa-plus"></i> Agregar
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Lista de productos agregados -->
+          <div class="dashboard-section">
+            <h3 class="dashboard-section-title">
+              <i class="fas fa-list"></i> Productos para Etiquetas
+            </h3>
+            <div class="data-table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Producto</th>
+                    <th>Código</th>
+                    <th>Precio</th>
+                    <th>Cantidad</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="etiquetaLista">
+                  <tr>
+                    <td colspan="5">No hay productos agregados.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Preview de etiquetas -->
+          <div class="dashboard-section">
+            <h3 class="dashboard-section-title">
+              <i class="fas fa-eye"></i> Vista Previa
+            </h3>
+            <div class="etiquetas-stats" id="etiquetaStats">
+              0 / 50 etiquetas
+            </div>
+            <div class="etiquetas-grid-container" id="etiquetasGrid"></div>
+            <button class="btn btn-print" onclick="imprimirEtiquetas()">
+              <i class="fas fa-print"></i> Imprimir Etiquetas
+            </button>
+          </div>
+
+          <div id="statusEtiquetas" class="status-message"></div>
+        </section>
+
+        <!-- ======================================================= -->
+        <!-- THE HERMIT COCKTAIL BAR - SECCIONES NUEVAS           -->
+        <!-- ======================================================= -->
+
+        <!-- Sección: Floor Plan -->
+        <section id="floorPlan" class="content-section">
+          <div class="section-header">
+            <h2>
+              <i class="fas fa-map"></i> Floor Plan - The Hermit Cocktail Bar
+            </h2>
+            <div class="section-actions">
+              <button class="btn btn-secondary" onclick="abrirEditorZonas()">
+                <i class="fas fa-layer-group"></i> Zonas
+              </button>
+              <button class="btn primary-btn" onclick="abrirEditorMesas()">
+                <i class="fas fa-plus"></i> Nueva Mesa
+              </button>
+            </div>
+          </div>
+
+          <div class="floor-plan-container">
+            <div class="floor-plan-toolbar">
+              <button
+                class="btn"
+                onclick="FloorPlanManager.setModoEdicion(true)"
+              >
+                <i class="fas fa-edit"></i> Editar
+              </button>
+              <button class="btn" onclick="FloorPlanManager.zoomIn()">
+                <i class="fas fa-search-plus"></i>
+              </button>
+              <button class="btn" onclick="FloorPlanManager.zoomOut()">
+                <i class="fas fa-search-minus"></i>
+              </button>
+              <button class="btn" onclick="FloorPlanManager.resetView()">
+                <i class="fas fa-compress-arrows-alt"></i>
+              </button>
+              <label class="btn btn-upload">
+                <i class="fas fa-image"></i> Fondo
+                <input
+                  type="file"
+                  accept="image/*"
+                  onchange="FloorPlanManager.cargarFondo(this)"
+                />
+              </label>
+            </div>
+
+            <div class="floor-plan-canvas-container">
+              <canvas id="floorPlanCanvas"></canvas>
+            </div>
+
+            <div class="floor-plan-leyenda">
+              <span class="leyenda-item">
+                <span class="leyenda-color" style="background: #27ae60"></span>
+                Disponible
+              </span>
+              <span class="leyenda-item">
+                <span class="leyenda-color" style="background: #e74c3c"></span>
+                Ocupada
+              </span>
+              <span class="leyenda-item">
+                <span class="leyenda-color" style="background: #f39c12"></span>
+                Reservada
+              </span>
+              <span class="leyenda-item">
+                <span class="leyenda-color" style="background: #95a5a6"></span>
+                Mantenimiento
+              </span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Sección: Menú -->
+        <section id="menu" class="content-section">
+          <div class="section-header">
+            <h2>
+              <i class="fas fa-glass-cheers"></i> Menú - The Hermit Cocktail Bar
+            </h2>
+            <div class="section-actions">
+              <button
+                class="btn primary-btn"
+                onclick="RecetasManager.abrirModalReceta()"
+              >
+                <i class="fas fa-plus"></i> Nueva Receta
+              </button>
+            </div>
+          </div>
+
+          <div class="menu-container">
+            <div class="menu-main">
+              <div class="menu-filters">
+                <div class="search-box">
+                  <i class="fas fa-search"></i>
+                  <input
+                    type="text"
+                    id="buscadorMenu"
+                    placeholder="Buscar receta..."
+                    oninput="RecetasManager.setBusqueda(this.value)"
+                  />
+                </div>
+                <div class="category-tabs" id="categoryTabs"></div>
+              </div>
+
+              <div class="menu-grid" id="menuGrid">
+                <div class="menu-vacio">
+                  Carga el menú desde la sección Recetas
+                </div>
+              </div>
+            </div>
+
+            <div class="cuenta-panel">
+              <div class="cuenta-panel__header">
+                <h3><i class="fas fa-receipt"></i> Cuenta Activa</h3>
+                <select
+                  id="selectorCuenta"
+                  onchange="CuentasManager.setCuentaActiva(this.value)"
+                >
+                  <option value="">Seleccionar...</option>
+                </select>
+              </div>
+
+              <div class="cuenta-panel__items" id="cuentaItems">
+                <div class="cuenta-vacio">Sin items</div>
+              </div>
+
+              <div class="cuenta-panel__total">
+                <div class="cuenta-panel__subtotal">
+                  <span>Subtotal:</span>
+                  <span id="cuentaSubtotal">$0.00</span>
+                </div>
+                <div class="cuenta-panel__descuento">
+                  <input
+                    type="number"
+                    id="descuentoInput"
+                    placeholder="Descuento"
+                    onchange="aplicarDescuentoCuenta(this.value)"
+                  />
+                </div>
+                <div class="cuenta-panel__total-row">
+                  <span>Total:</span>
+                  <span id="cuentaActivaTotal" class="total-amount">$0.00</span>
+                </div>
+              </div>
+
+              <div class="cuenta-panel__actions">
+                <button
+                  class="btn btn-secondary"
+                  onclick="abrirCocktailPersonalizado()"
+                >
+                  <i class="fas fa-flask"></i> Personalizado
+                </button>
+                <button class="btn btn-warning" onclick="cancelarCuenta()">
+                  <i class="fas fa-times"></i> Cancelar
+                </button>
+                <button class="btn primary-btn" onclick="abrirPagoCuenta()">
+                  <i class="fas fa-credit-card"></i> Pagar
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Sección: Cuentas -->
+        <section id="cuentas" class="content-section">
+          <div class="section-header">
+            <h2>
+              <i class="fas fa-receipt"></i> Cuentas - The Hermit Cocktail Bar
+            </h2>
+          </div>
+
+          <div class="cuentas-mesas-container">
+            <div class="mesas-disponibles-grid" id="mesasCuentasGrid">
+              <!-- Mesas se renderizarán aquí -->
+            </div>
+            
+            <div class="cuentas-resumen">
+              <div class="resumen-card">
+                <h4>Resumen del Día</h4>
+                <div class="resumen-item">
+                  <span>Cuentas pagadas:</span>
+                  <span id="cuentasPagadas">0</span>
+                </div>
+                <div class="resumen-item">
+                  <span>Total ventas:</span>
+                  <span id="ventasDia">$0</span>
+                </div>
+                <div class="resumen-item">
+                  <span>Ticket promedio:</span>
+                  <span id="ticketPromedio">$0</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Sección: Recetas -->
+        <section id="recetas" class="content-section">
+          <div class="section-header">
+            <h2>
+              <i class="fas fa-book-open"></i> Recetas - The Hermit Cocktail Bar
+            </h2>
+            <div class="section-actions">
+              <button
+                class="btn primary-btn"
+                onclick="RecetasManager.abrirModalReceta()"
+              >
+                <i class="fas fa-plus"></i> Nueva Receta
+              </button>
+            </div>
+          </div>
+
+          <div class="recetas-admin-container">
+            <div class="recetas-filtros">
+              <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input
+                  type="text"
+                  id="buscadorRecetas"
+                  placeholder="Buscar recetas..."
+                  oninput="RecetasManager.setBusqueda(this.value)"
+                />
+              </div>
+            </div>
+
+            <div class="recetas-tabla-container">
+              <table class="recetas-tabla">
+                <thead>
+                  <tr>
+                    <th>Nombre</th>
+                    <th>Categoría</th>
+                    <th>Precio</th>
+                    <th>Costo</th>
+                    <th>Disponibilidad</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="recetasTablaBody">
+                  <tr>
+                    <td colspan="6" style="text-align: center">
+                      No hay recetas creadas
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div id="gastoModal" class="factura-overlay hidden">
+      <div class="factura-card" style="max-width: 500px">
+        <div class="factura-header">
+          <h3>Registrar Gasto</h3>
+          <button onclick="cerrarModalGasto()" class="btn secondary-btn">
+            Cerrar
+          </button>
+        </div>
+        <form id="gastoForm" class="form-grid single-col" style="padding: 20px">
+          <div class="form-group">
+            <label for="g_categoria">Categoría del Gasto:</label>
+            <select id="g_categoria" required>
+              <option value="Servicios">Servicios</option>
+              <option value="Sueldos">Sueldos</option>
+              <option value="Arriendo">Arriendo</option>
+              <option value="Mantenimiento">Mantenimiento</option>
+              <option value="Transporte">Transporte</option>
+              <option value="Domicilio">Domicilio</option>
+              <option value="Otros">Otros</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="g_monto">Monto:</label>
+            <input
+              type="text"
+              id="g_monto"
+              class="money-input"
+              required
+              placeholder="0"
+            />
+          </div>
+          <div class="form-group">
+            <label for="g_metodo_pago">Método de Pago:</label>
+            <select id="g_metodo_pago" required>
+              <option value="efectivo">Efectivo</option>
+              <option value="nequi">Nequi</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="g_concepto">Concepto / Descripción:</label>
+            <input
+              type="text"
+              id="g_concepto"
+              required
+              placeholder="Ej: Pago de luz"
+            />
+          </div>
+          <button type="submit" class="btn primary-btn full-width">
+            Registrar Gasto
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <div id="aprovechoModal" class="factura-overlay hidden">
+      <div class="factura-card" style="max-width: 500px">
+        <div class="factura-header">
+          <h3>Registrar Aprovechamiento</h3>
+          <button onclick="cerrarModalAprovecho()" class="btn secondary-btn">
+            Cerrar
+          </button>
+        </div>
+        <form
+          id="aprovechoForm"
+          class="form-grid single-col"
+          style="padding: 20px"
+        >
+          <div class="form-group">
+            <label for="a_categoria">Categoría:</label>
+            <select id="a_categoria" required>
+              <option value="Venta adicional">Venta adicional</option>
+              <option value="Ganancia extra">Ganancia extra</option>
+              <option value="Devolución">Devolución</option>
+              <option value="Otros">Otros</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="a_monto">Monto:</label>
+            <input
+              type="text"
+              id="a_monto"
+              class="money-input"
+              required
+              placeholder="0"
+            />
+          </div>
+          <div class="form-group">
+            <label for="a_metodo_pago">Método de Pago:</label>
+            <select id="a_metodo_pago" required>
+              <option value="efectivo">Efectivo</option>
+              <option value="nequi">Nequi</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="a_concepto">Concepto / Descripción:</label>
+            <input
+              type="text"
+              id="a_concepto"
+              required
+              placeholder="Ej: Ganancia por venta extra"
+            />
+          </div>
+          <button type="submit" class="btn primary-btn full-width">
+            Registrar Aprovechamiento
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <div id="facturaModal" class="factura-overlay hidden">
+      <div class="factura-card">
+        <div class="factura-header">
+          <div style="width: 100px"></div>
+          <h3>Factura</h3>
+          <button
+            onclick="cerrarFactura()"
+            class="btn secondary-btn"
+            style="min-width: 100px"
+          >
+            Cerrar
+          </button>
+        </div>
+
+        <div id="facturaContenido"></div>
+
+        <div class="factura-actions">
+          <button onclick="imprimirFacturaTermica()" class="btn dark-btn">
+            <i class="fas fa-receipt"></i> Imprimir Ticket
+          </button>
+
+          <button
+            id="btnImprimirDomicilio"
+            onclick="imprimirTicketDomicilio()"
+            class="btn primary-btn hidden"
+          >
+            <i class="fas fa-motorcycle"></i> Imprimir Domicilio
+          </button>
+
+          <button onclick="window.print()" class="btn secondary-btn">
+            <i class="fas fa-print"></i> Imprimir Hoja
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <button class="mobile-toggle hidden" id="mobileToggle">
+      <i class="fas fa-bars"></i>
+    </button>
+    <div id="loadingOverlay" class="loading-overlay hidden">
+      <div class="loading-box">
+        <div class="loading-spinner"></div>
+        <p id="loadingText">Cargando...</p>
+      </div>
+    </div>
+
+    <!-- Botón Flotante para Cerrar Sesión (Visible solo en modo Ventas) -->
+    <button
+      id="floatLogoutBtn"
+      class="float-logout-btn hidden"
+      title="Cerrar Sesión"
+    >
+      <i class="fas fa-sign-out-alt"></i>
+    </button>
+
+    <div id="cierreDetalleModal" class="factura-overlay hidden">
+      <div class="factura-card" style="max-width: 600px">
+        <div class="factura-header">
+          <div style="width: 100px"></div>
+          <h3><i class="fas fa-lock-open"></i> Detalle de Cierre</h3>
+          <button
+            onclick="cerrarCierreDetalle()"
+            class="btn secondary-btn"
+            style="min-width: 100px"
+          >
+            Cerrar
+          </button>
+        </div>
+        <div id="cierreDetalleContenido" style="padding: 20px">
+          <!-- Se llena dinámicamente -->
+        </div>
+        <div class="factura-actions">
+          <button onclick="window.print()" class="btn secondary-btn">
+            <i class="fas fa-print"></i> Imprimir Vista
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="gastoDetalleModal" class="factura-overlay hidden">
+      <div class="factura-card" style="max-width: 500px">
+        <div class="factura-header">
+          <div style="width: 100px"></div>
+          <h3 id="gastoDetalleTitulo">
+            <i class="fas fa-file-invoice-dollar"></i> Detalle
+          </h3>
+          <button
+            onclick="cerrarGastoDetalle()"
+            class="btn secondary-btn"
+            style="min-width: 100px"
+          >
+            Cerrar
+          </button>
+        </div>
+        <div id="gastoDetalleContenido" style="padding: 20px">
+          <!-- Se llena dinámicamente -->
+        </div>
+        <div class="factura-actions">
+          <button onclick="window.print()" class="btn secondary-btn">
+            <i class="fas fa-print"></i> Imprimir
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="inventarioDetalleModal" class="factura-overlay hidden">
+      <div class="factura-card" style="max-width: 500px">
+        <div class="factura-header">
+          <div style="width: 100px"></div>
+          <h3><i class="fas fa-box"></i> Detalle del Producto</h3>
+          <button
+            onclick="cerrarInventarioDetalle()"
+            class="btn secondary-btn"
+            style="min-width: 100px"
+          >
+            Cerrar
+          </button>
+        </div>
+        <div id="inventarioDetalleContenido" style="padding: 20px">
+          <!-- Se llena dinámicamente -->
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL DE SINCRONIZACIÓN -->
+    <div
+      id="sincronizacionModal"
+      class="factura-overlay hidden"
+      style="z-index: 10001"
+    >
+      <div class="factura-card" style="max-width: 500px">
+        <div class="factura-header">
+          <div style="width: 100px"></div>
+          <h3><i class="fas fa-sync-alt"></i> Sincronizando...</h3>
+          <button
+            id="btnCerrarSync"
+            onclick="cerrarSincronizacion()"
+            class="btn secondary-btn"
+            style="min-width: 100px"
+            disabled
+          >
+            Cerrar
+          </button>
+        </div>
+        <div id="sincronizacionContenido" style="padding: 20px">
+          <!-- Se llena dinámicamente -->
+        </div>
+        <div class="factura-actions">
+          <button
+            id="btnReintentarSync"
+            onclick="forceSyncVentas()"
+            class="btn primary-btn hidden"
+          >
+            <i class="fas fa-sync"></i> Reintentar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODALES DE DETALLE DEL DASHBOARD -->
+    <!-- 1. Detalle Ventas -->
+    <div id="detalleVentasModal" class="factura-overlay hidden">
+      <div class="factura-card" style="max-width: 800px">
+        <div class="factura-header">
+          <h3><i class="fas fa-arrow-trend-up"></i> Detalle de Ventas</h3>
+          <button onclick="cerrarDetalleVentas()" class="btn secondary-btn">
+            Cerrar
+          </button>
+        </div>
+        <div
+          id="detalleVentasContenido"
+          style="padding: 20px; max-height: 60vh; overflow-y: auto"
+        ></div>
+      </div>
+    </div>
+
+    <!-- 2. Detalle Ganancias -->
+    <div id="detalleGananciasModal" class="factura-overlay hidden">
+      <div class="factura-card" style="max-width: 800px">
+        <div class="factura-header">
+          <h3><i class="fas fa-peso-sign"></i> Detalle de Ganancias</h3>
+          <button onclick="cerrarDetalleGanancias()" class="btn secondary-btn">
+            Cerrar
+          </button>
+        </div>
+        <div
+          id="detalleGananciasContenido"
+          style="padding: 20px; max-height: 60vh; overflow-y: auto"
+        ></div>
+      </div>
+    </div>
+
+    <!-- 3. Detalle Margen -->
+    <div id="detalleMargenModal" class="factura-overlay hidden">
+      <div class="factura-card" style="max-width: 500px">
+        <div class="factura-header">
+          <h3><i class="fas fa-percent"></i> Detalle de Margen de Ganancia</h3>
+          <button onclick="cerrarDetalleMargen()" class="btn secondary-btn">
+            Cerrar
+          </button>
+        </div>
+        <div id="detalleMargenContenido" style="padding: 20px"></div>
+      </div>
+    </div>
+
+    <!-- 4. Detalle Inventario -->
+    <div id="detalleInventarioModal" class="factura-overlay hidden">
+      <div class="factura-card" style="max-width: 800px">
+        <div class="factura-header">
+          <h3><i class="fas fa-box"></i> Detalle del Valor de Inventario</h3>
+          <button onclick="cerrarDetalleInventario()" class="btn secondary-btn">
+            Cerrar
+          </button>
+        </div>
+        <div
+          id="detalleInventarioContenido"
+          style="padding: 20px; max-height: 60vh; overflow-y: auto"
+        ></div>
+      </div>
+    </div>
+
+    <!-- 5. Detalle Efectivo -->
+    <div id="detalleEfectivoModal" class="factura-overlay hidden">
+      <div class="factura-card" style="max-width: 800px">
+        <div class="factura-header">
+          <h3>
+            <i class="fas fa-money-bill-wave"></i> Detalle de Saldo en Efectivo
+          </h3>
+          <button onclick="cerrarDetalleEfectivo()" class="btn secondary-btn">
+            Cerrar
+          </button>
+        </div>
+        <div
+          id="detalleEfectivoContenido"
+          style="padding: 20px; max-height: 60vh; overflow-y: auto"
+        ></div>
+      </div>
+    </div>
+
+    <!-- 6. Detalle Nequi -->
+    <div id="detalleNequiModal" class="factura-overlay hidden">
+      <div class="factura-card" style="max-width: 800px">
+        <div class="factura-header">
+          <h3><i class="fas fa-mobile-alt"></i> Detalle de Saldo Nequi</h3>
+          <button onclick="cerrarDetalleNequi()" class="btn secondary-btn">
+            Cerrar
+          </button>
+        </div>
+        <div
+          id="detalleNequiContenido"
+          style="padding: 20px; max-height: 60vh; overflow-y: auto"
+        ></div>
+      </div>
+    </div>
+
+    <!-- 7. Detalle Gastos -->
+    <div id="detalleGastosModal" class="factura-overlay hidden">
+      <div class="factura-card" style="max-width: 800px">
+        <div class="factura-header">
+          <h3>
+            <i class="fas fa-arrow-up-right"></i> Detalle de Egresos (Gastos)
+          </h3>
+          <button onclick="cerrarDetalleGastos()" class="btn secondary-btn">
+            Cerrar
+          </button>
+        </div>
+        <div
+          id="detalleGastosContenido"
+          style="padding: 20px; max-height: 60vh; overflow-y: auto"
+        ></div>
+      </div>
+    </div>
+
+    <!-- 8. Detalle Compras -->
+    <div id="detalleComprasModal" class="factura-overlay hidden">
+      <div class="factura-card" style="max-width: 800px">
+        <div class="factura-header">
+          <h3>
+            <i class="fas fa-shopping-cart"></i> Detalle de Compras a
+            Proveedores
+          </h3>
+          <button onclick="cerrarDetalleCompras()" class="btn secondary-btn">
+            Cerrar
+          </button>
+        </div>
+        <div
+          id="detalleComprasContenido"
+          style="padding: 20px; max-height: 60vh; overflow-y: auto"
+        ></div>
+      </div>
+    </div>
+
+    <!-- 9. Detalle Costo Venta -->
+    <div id="detalleCostoVentaModal" class="factura-overlay hidden">
+      <div class="factura-card" style="max-width: 800px">
+        <div class="factura-header">
+          <h3>
+            <i class="fas fa-tags"></i> Detalle de Costo de Mercancía Vendida
+          </h3>
+          <button onclick="cerrarDetalleCostoVenta()" class="btn secondary-btn">
+            Cerrar
+          </button>
+        </div>
+        <div
+          id="detalleCostoVentaContenido"
+          style="padding: 20px; max-height: 60vh; overflow-y: auto"
+        ></div>
+      </div>
+    </div>
+
+    <!-- 10. Detalle Por Cobrar -->
+    <div id="detallePendienteModal" class="factura-overlay hidden">
+      <div class="factura-card" style="max-width: 800px">
+        <div class="factura-header">
+          <h3><i class="fas fa-clock"></i> Detalle de Cuentas por Cobrar</h3>
+          <button onclick="cerrarDetallePendiente()" class="btn secondary-btn">
+            Cerrar
+          </button>
+        </div>
+        <div
+          id="detallePendienteContenido"
+          style="padding: 20px; max-height: 60vh; overflow-y: auto"
+        ></div>
+      </div>
+    </div>
+
+    <!-- Modal Genérico para Gráficos del Dashboard -->
+    <div id="graficoDetalleModal" class="factura-overlay hidden">
+      <div
+        class="factura-card"
+        style="max-width: 90vw; max-height: 90vh; width: 900px"
+      >
+        <div class="factura-header">
+          <h3 id="graficoDetalleTitulo">
+            <i class="fas fa-chart-bar"></i> Detalle del Gráfico
+          </h3>
+          <button onclick="cerrarGraficoDetalle()" class="btn secondary-btn">
+            Cerrar
+          </button>
+        </div>
+        <div style="padding: 20px; max-height: 75vh; overflow-y: auto">
+          <div style="height: 50vh; margin-bottom: 20px">
+            <canvas id="graficoDetalleCanvas"></canvas>
+          </div>
+          <div
+            id="graficoDetalleInfo"
+            style="background: #f9fafb; border-radius: 8px; padding: 15px"
+          >
+            <!-- Información adicional se carga dinámicamente -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Overlay de Login -->
+    <div id="loginOverlay" class="login-overlay">
+      <div class="login-card">
+        <div class="login-header">
+          <img src="img/logo.png" alt="Gitanas Logo" class="login-logo" />
+          <h1>Gitanas POS</h1>
+          <p>Gestión de Inventario y Ventas</p>
+        </div>
+
+        <div class="login-body">
+          <div class="role-selector">
+            <button
+              type="button"
+              class="role-btn active"
+              data-role="ventas"
+              id="btnRoleVentas"
+              onclick="selectRole('ventas')"
+            >
+              <i class="fas fa-cash-register"></i>
+              <span>Ventas</span>
+            </button>
+            <button
+              type="button"
+              class="role-btn"
+              data-role="admin"
+              id="btnRoleAdmin"
+              onclick="selectRole('admin')"
+            >
+              <i class="fas fa-user-shield"></i>
+              <span>Administrador</span>
+            </button>
+          </div>
+
+          <div id="adminPassBlock" class="form-group hidden">
+            <label for="loginPass">Contraseña de Administrador</label>
+            <input
+              type="password"
+              id="loginPass"
+              placeholder="Ingrese contraseña"
+              autocomplete="current-password"
+            />
+          </div>
+
+          <button
+            id="loginBtn"
+            class="btn primary-btn full-width"
+            style="margin-top: 1rem"
+            onclick="doLogin()"
+          >
+            Entrar al Sistema <i class="fas fa-arrow-right"></i>
+          </button>
+
+          <div
+            id="loginStatus"
+            class="status-message hidden"
+            style="margin-top: 1rem; padding: 0.5rem; font-size: 0.8rem"
+          ></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================= -->
+    <!-- THE HERMIT COCKTAIL BAR - MODALES                      -->
+    <!-- ======================================================= -->
+
+    <!-- Modal Receta -->
+    <div id="recetaModal" class="modal-bar hidden">
+      <div class="modal-content-bar">
+        <div class="modal-header-bar">
+          <h3>
+            <i class="fas fa-cocktail"></i>
+            <span id="recetaModalTitle">Nueva Receta</span>
+          </h3>
+          <button onclick="cerrarModalReceta()">&times;</button>
+        </div>
+        <div class="modal-body-bar">
+          <form id="recetaForm">
+            <input type="hidden" id="recetaId" />
+            <div class="form-group">
+              <label>Nombre de la receta</label>
+              <input type="text" id="recetaNombre" required />
+            </div>
+            <div class="form-group">
+              <label>Categoría</label>
+              <select id="recetaCategoria">
+                <option value="Cóctel">Cóctel</option>
+                <option value="Shot">Shot</option>
+                <option value="Bebida sin alcohol">Bebida sin alcohol</option>
+                <option value="Combinado">Combinado</option>
+                <option value="Comida">Comida</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Descripción</label>
+              <textarea id="recetaDescripcion" rows="2"></textarea>
+            </div>
+            <div class="form-group">
+              <label>Precio de Venta</label>
+              <input type="number" id="recetaPrecio" step="0.01" min="0" />
+            </div>
+            <input type="hidden" id="recetaImagen" />
+            <div class="form-group">
+              <label>Ingredientes</label>
+              <div id="ingredientesEditor"></div>
+              <button
+                type="button"
+                class="btn btn-secondary"
+                style="margin-top: 0.5rem"
+                onclick="agregarIngredienteEditor()"
+              >
+                + Agregar Ingrediente
+              </button>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer-bar">
+          <button class="btn btn-secondary" onclick="cerrarModalReceta()">
+            Cancelar
+          </button>
+          <button
+            class="btn primary-btn"
+            onclick="RecetasManager.guardarReceta()"
+          >
+            Guardar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Cocktail Personalizado -->
+    <div id="personalizadoModal" class="modal-bar hidden">
+      <div class="modal-content-bar">
+        <div class="modal-header-bar">
+          <h3><i class="fas fa-flask"></i> Cóctel Personalizado</h3>
+          <button onclick="cerrarModalPersonalizado()">&times;</button>
+        </div>
+        <div class="modal-body-bar">
+          <div class="form-group">
+            <label>Nombre</label>
+            <input
+              type="text"
+              id="personalizadoNombre"
+              placeholder="Ej: Combinado Especial"
+            />
+          </div>
+          <div class="form-group">
+            <label>Ingredientes</label>
+            <div id="personalizadoIngredientes"></div>
+            <button
+              type="button"
+              class="btn btn-secondary"
+              style="margin-top: 0.5rem"
+              onclick="agregarIngredientePersonalizado()"
+            >
+              + Agregar
+            </button>
+          </div>
+          <div class="form-group">
+            <label>Precio</label>
+            <input type="number" id="personalizadoPrecio" step="0.01" />
+          </div>
+          <div class="form-group">
+            <label>Notas</label>
+            <input
+              type="text"
+              id="personalizadoNotas"
+              placeholder="Sin hielo, extra limón..."
+            />
+          </div>
+        </div>
+        <div class="modal-footer-bar">
+          <button
+            class="btn btn-secondary"
+            onclick="cerrarModalPersonalizado()"
+          >
+            Cancelar
+          </button>
+          <button
+            class="btn primary-btn"
+            onclick="agregarPersonalizadoACuenta()"
+          >
+            Agregar a Cuenta
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Nueva Mesa -->
+    <div id="mesaModal" class="modal-bar hidden">
+      <div class="modal-content-bar">
+        <div class="modal-header-bar">
+          <h3><i class="fas fa-chair"></i> Nueva Mesa</h3>
+          <button onclick="cerrarModalMesa()">&times;</button>
+        </div>
+        <div class="modal-body-bar">
+          <div class="form-group">
+            <label>Nombre</label>
+            <input type="text" id="mesaNombre" placeholder="Mesa 1" />
+          </div>
+          <div class="form-group">
+            <label>Capacidad (sillas)</label>
+            <input
+              type="number"
+              id="mesaCapacidad"
+              value="4"
+              min="1"
+              max="20"
+            />
+          </div>
+          <div class="form-group">
+            <label>Forma</label>
+            <select id="mesaForma">
+              <option value="circular">Circular</option>
+              <option value="rectangular">Rectangular</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer-bar">
+          <button class="btn btn-secondary" onclick="cerrarModalMesa()">
+            Cancelar
+          </button>
+          <button class="btn primary-btn" onclick="guardarNuevaMesa()">
+            Crear Mesa
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal支付 Cuenta -->
+    <div id="pagoModal" class="modal-bar hidden">
+      <div class="modal-content-bar">
+        <div class="modal-header-bar">
+          <h3><i class="fas fa-credit-card"></i> Pagar Cuenta</h3>
+          <button onclick="cerrarModalPago()">&times;</button>
+        </div>
+        <div class="modal-body-bar">
+          <div class="form-group">
+            <label>Total a Pagar</label>
+            <div
+              id="montoPagoTotal"
+              style="
+                font-size: 1.5rem;
+                color: var(--hermit-accent);
+                font-weight: bold;
+              "
+            >
+              $0.00
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Método de Pago</label>
+            <select id="metodoPago">
+              <option value="efectivo">Efectivo</option>
+              <option value="tarjeta">Tarjeta</option>
+              <option value="transferencia">Transferencia</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Monto Recibido</label>
+            <input type="number" id="montoRecibido" step="0.01" />
+          </div>
+        </div>
+        <div class="modal-footer-bar">
+          <button class="btn btn-secondary" onclick="cerrarModalPago()">
+            Cancelar
+          </button>
+          <button class="btn primary-btn" onclick="procesarPago()">
+            Confirmar Pago
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script src="utils.js"></script>
+    <script src="script.js"></script>
+    <!-- The Hermit Cocktail Bar Scripts -->
+    <script src="config.js"></script>
+    <script src="cuentas.js"></script>
+    <script src="recetas.js"></script>
+    <script src="floor-plan.js"></script>
+  </body>
+</html>
