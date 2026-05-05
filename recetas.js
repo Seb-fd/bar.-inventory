@@ -11,12 +11,19 @@ const RecetasManager = {
 
 async init() {
     console.log("[DEBUG] RecetasManager.init() iniciado");
+    
+    // Mostrar indicador de carga
+    if (typeof displayStatus !== 'undefined') {
+      displayStatus('statusRecetas', 'info', 'Cargando recetas...');
+    }
+    
     await this.cargarRecetas();
     await this.cargarProductos();
     this.generarCategorias();
     this.renderCategorias();
     this.bindCategoryEvents();
     this.render();
+    
     console.log("[DEBUG] RecetasManager.init() completado");
   },
 
@@ -43,20 +50,30 @@ renderCategorias() {
   },
 
   async cargarRecetas() {
-    console.log("[DEBUG] cargarRecetas() llamado - llamando backend...");
+    console.log("[DEBUG] cargarRecetas() llamado - llamadas backend...");
     try {
       const result = await callGoogleScript("obtenerRecetas", {});
       console.log("[DEBUG] obtenerRecetas response:", JSON.stringify(result));
       if (result.status === "success") {
         this.recetas = result.data || [];
         console.log("[DEBUG] recetas asignadas:", this.recetas.length);
+        // Mostrar éxito
+        if (typeof displayStatus !== 'undefined') {
+          displayStatus('statusRecetas', 'success', `${this.recetas.length} recetas cargadas`);
+        }
       } else {
         console.error("[DEBUG] obtenerRecetas error:", result.message);
         this.recetas = [];
+        if (typeof displayStatus !== 'undefined') {
+          displayStatus('statusRecetas', 'warning', result.message);
+        }
       }
     } catch (e) {
       console.error("[DEBUG] Error cargando recetas:", e);
       this.recetas = [];
+      if (typeof displayStatus !== 'undefined') {
+        displayStatus('statusRecetas', 'error', 'Error al cargar recetas');
+      }
     }
   },
 
@@ -206,8 +223,8 @@ renderCategorias() {
         <div class="menu-card__contenido">
           <h3 class="menu-card__titulo">${receta.nombre}</h3>
           <p class="menu-card__descripcion">${receta.descripcion || ""}</p>
-          <div class="menu-card__precio">$${receta.precio_venta || 0}</div>
-          <div class="menu-card__costo">Costo: $${costo.toFixed(2)} (${margen}%)</div>
+          <div class="menu-card__precio">${formatearCOP(receta.precio_venta || 0)}</div>
+          <div class="menu-card__costo">Costo: ${formatearCOP(costo)} (${margen}%)</div>
           <div class="menu-card__controles">
             <button class="btn-cantidad btn-menos" data-id="${receta.id_receta}">−</button>
             <span class="menu-card__cantidad" data-id="${receta.id_receta}">0</span>

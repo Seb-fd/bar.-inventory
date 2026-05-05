@@ -138,7 +138,22 @@ const CuentasManager = {
     this.guardarEnLocalStorage();
 
     try {
-      await callGoogleScript("abrirCuenta", data);
+      // Enviar el ID local al backend para mantener consistencia
+      const dataConId = { ...data, id_cuenta: nuevaCuenta.id_cuenta };
+      const result = await callGoogleScript("abrirCuenta", dataConId);
+      
+      // Si el backend retorna un ID diferente, actualizar la cuenta local
+      if (result.status === "success" && result.id_cuenta && result.id_cuenta !== nuevaCuenta.id_cuenta) {
+        // Actualizar ID en la cuenta local
+        const cuentaIndex = this.cuentasAbiertas.findIndex(c => c.id_cuenta === nuevaCuenta.id_cuenta);
+        if (cuentaIndex !== -1) {
+          this.cuentasAbiertas[cuentaIndex].id_cuenta = result.id_cuenta;
+          if (this.cuentaActiva === nuevaCuenta.id_cuenta) {
+            this.cuentaActiva = result.id_cuenta;
+          }
+          this.guardarEnLocalStorage();
+        }
+      }
     } catch (e) {
       console.log("Cuenta guardada localmente (offline):", e.message);
     }
@@ -280,6 +295,12 @@ const CuentasManager = {
     cuenta.estado = "cancelada";
     cuenta.ultima_actualizacion = new Date().toISOString();
 
+    // Eliminar del array local
+    const idx = this.cuentasAbiertas.findIndex(c => c.id_cuenta === idCuenta);
+    if (idx !== -1) {
+      this.cuentasAbiertas.splice(idx, 1);
+    }
+
     this.guardarEnLocalStorage();
 
     try {
@@ -318,7 +339,7 @@ const CuentasManager = {
     const cuentaActiva = this.getCuentaActiva();
     const totalElement = document.getElementById("cuentaActivaTotal");
     if (totalElement && cuentaActiva) {
-      totalElement.textContent = "$" + cuentaActiva.total.toFixed(2);
+      totalElement.textContent = "$" + formatearCOP(cuentaActiva.total);
     }
     
     document.dispatchEvent(new CustomEvent("cuentasActualizadas", {

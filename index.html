@@ -62,9 +62,12 @@
           <a href="#menu" data-section="menu">
             <i class="fas fa-glass-cheers"></i> Menú
           </a>
+          <!-- Floor Plan temporalmente oculto para corrección -->
+          <!--
           <a href="#floorPlan" data-section="floorPlan">
             <i class="fas fa-map"></i> Floor Plan
           </a>
+          -->
           <a href="#cuentas" data-section="cuentas">
             <i class="fas fa-receipt"></i> Cuentas
           </a>
@@ -555,6 +558,7 @@
                 type="number"
                 id="p_precio_compra"
                 class="money-input"
+                step="1"
                 required
                 placeholder="0"
                 value="0"
@@ -566,6 +570,7 @@
                 type="number"
                 id="p_precio_venta"
                 class="money-input"
+                step="1"
                 required
                 placeholder="0"
                 value="0"
@@ -577,6 +582,7 @@
                 type="number"
                 id="p_precio_venta_2"
                 class="money-input"
+                step="1"
                 placeholder="0"
                 value="0"
               />
@@ -587,6 +593,7 @@
                 type="number"
                 id="p_precio_venta_3"
                 class="money-input"
+                step="1"
                 placeholder="0"
                 value="0"
               />
@@ -597,6 +604,7 @@
                 type="number"
                 id="p_precio_venta_4"
                 class="money-input"
+                step="1"
                 placeholder="0"
                 value="0"
               />
@@ -2157,56 +2165,6 @@
                 </div>
               </div>
             </div>
-
-            <div class="cuenta-panel">
-              <div class="cuenta-panel__header">
-                <h3><i class="fas fa-receipt"></i> Cuenta Activa</h3>
-                <select
-                  id="selectorCuenta"
-                  onchange="CuentasManager.setCuentaActiva(this.value)"
-                >
-                  <option value="">Seleccionar...</option>
-                </select>
-              </div>
-
-              <div class="cuenta-panel__items" id="cuentaItems">
-                <div class="cuenta-vacio">Sin items</div>
-              </div>
-
-              <div class="cuenta-panel__total">
-                <div class="cuenta-panel__subtotal">
-                  <span>Subtotal:</span>
-                  <span id="cuentaSubtotal">$0.00</span>
-                </div>
-                <div class="cuenta-panel__descuento">
-                  <input
-                    type="number"
-                    id="descuentoInput"
-                    placeholder="Descuento"
-                    onchange="aplicarDescuentoCuenta(this.value)"
-                  />
-                </div>
-                <div class="cuenta-panel__total-row">
-                  <span>Total:</span>
-                  <span id="cuentaActivaTotal" class="total-amount">$0.00</span>
-                </div>
-              </div>
-
-              <div class="cuenta-panel__actions">
-                <button
-                  class="btn btn-secondary"
-                  onclick="abrirCocktailPersonalizado()"
-                >
-                  <i class="fas fa-flask"></i> Personalizado
-                </button>
-                <button class="btn btn-warning" onclick="cancelarCuenta()">
-                  <i class="fas fa-times"></i> Cancelar
-                </button>
-                <button class="btn primary-btn" onclick="abrirPagoCuenta()">
-                  <i class="fas fa-credit-card"></i> Pagar
-                </button>
-              </div>
-            </div>
           </div>
         </section>
 
@@ -2217,6 +2175,9 @@
               <i class="fas fa-receipt"></i> Cuentas - The Hermit Cocktail Bar
             </h2>
             <div class="section-actions">
+              <button class="btn secondary-btn" onclick="actualizarCuentas()" title="Actualizar cuentas">
+                <i class="fas fa-sync"></i> Actualizar
+              </button>
               <button class="btn primary-btn" onclick="abrirModalNuevaCuenta()">
                 <i class="fas fa-plus"></i> Abrir Cuenta
               </button>
@@ -2225,6 +2186,8 @@
               </button>
             </div>
           </div>
+
+          <div id="statusCuentas" class="status-message"></div>
 
           <div class="cuentas-mesas-container">
             <div class="mesas-disponibles-grid" id="mesasCuentasGrid">
@@ -2266,6 +2229,8 @@
               </button>
             </div>
           </div>
+
+          <div id="statusRecetas" class="status-message"></div>
 
           <div class="recetas-admin-container">
             <div class="recetas-filtros">
@@ -2891,7 +2856,7 @@
             </div>
             <div class="form-group">
               <label>Precio de Venta</label>
-              <input type="number" id="recetaPrecio" step="0.01" min="0" />
+              <input type="number" id="recetaPrecio" step="1" min="0" />
             </div>
             <input type="hidden" id="recetaImagen" />
             <div class="form-group">
@@ -2952,7 +2917,7 @@
           </div>
           <div class="form-group">
             <label>Precio</label>
-            <input type="number" id="personalizadoPrecio" step="0.01" />
+            <input type="number" id="personalizadoPrecio" step="1" />
           </div>
           <div class="form-group">
             <label>Notas</label>
@@ -3039,7 +3004,7 @@
                 font-weight: bold;
               "
             >
-              $0.00
+              $0
             </div>
           </div>
           <div class="form-group">
@@ -3052,7 +3017,7 @@
           </div>
           <div class="form-group">
             <label>Monto Recibido</label>
-            <input type="number" id="montoRecibido" step="0.01" />
+            <input type="number" id="montoRecibido" step="1" />
           </div>
         </div>
         <div class="modal-footer-bar">

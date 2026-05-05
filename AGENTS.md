@@ -1,52 +1,57 @@
-# AGENTS.md - Inventory Project (The Hermit Cocktail Bar)
+# AGENTS.md - The Hermit Cocktail Bar
 
 ## Project Type
 Vanilla JS + Google Apps Script. No build tools, no package.json, no Node.js.
 
-## Branch
-- **bar-inventory** - Contains The Hermit Cocktail Bar implementation (separate from main)
-- **main** - Original store/lencería inventory (do not confuse with bar branch)
+## Historia
+Este proyecto era anteriormente un branch (`bar-inventory`) de otro proyecto. Fue separado completamente para facilitar el deploy a producción. Ahora es el proyecto standalone de The Hermit Cocktail Bar.
 
-## Key Files
-- `sg.js` - Backend (Google Apps Script). **Config at line 4: `SPREADSHEET_ID`**
-- `script.js` - Frontend. **Config at lines 1-2: `SCRIPT_URL`**
-- `index.html` - Main HTML
-- `estilo.css` - Styles
-- `utils.js` - Shared utilities
-- `cuentas.js` - Open tabs/accounts system with localStorage
+## key Files
+- `sg.js` - Backend (Apps Script). **`SPREADSHEET_ID` at line 4**
+- `script.js` - Frontend. **`SCRIPT_URL` at lines 1-2**, admin password at line 243
+- `config.js` - Bar config (`BAR_CONFIG`, unit conversions, stock levels)
+- `utils.js` - Shared utilities + offline support (ventas/compras sync, inventory cache)
+- `cuentas.js` - Open tabs/accounts with localStorage
 - `floor-plan.js` - Interactive canvas floor plan
 - `recetas.js` - Cocktail recipes CRUD
+- `index.html` - Load order matters: utils.js → config.js → script.js → cuentas.js → floor-plan.js → recetas.js
 
 ## Running Tests
-Browser console only:
-1. Open app in browser
-2. Press F12 → Console tab
-3. Copy/paste content of `tests/unit.test.js`
-4. Run: `runOnlyUnitTests()` or `runAllTests()`
+Browser console only (paste into app page, not empty tab):
+1. Open app in browser, F12 → Console
+2. Paste `tests/unit.test.js`, then `tests/run.js`
+3. Run: `runOnlyUnitTests()` or `runAllTests()`
+
+Test files: `unit.test.js`, `integration.test.js`, `utils.test.js`, `frontend.test.js`, `recetas.test.js`, `cuentas.test.js`
+Note: `tests/run-tests.js` is a Node.js verification script, not the browser runner.
 
 ## Configuration
 
-### Current Config (bar-inventory branch)
+### Current (bar-inventory standalone)
 - **SPREADSHEET_ID**: `12IlQFCmS420xFR-J8KSzhGPueYF2lrElHu6_PrTFARQ`
 - **SCRIPT_URL**: `https://script.google.com/macros/s/AKfycbwdp3wBAQEpf2gPJKa0nfiAOlHAeLXV3bMsyE5JiO1x-9thWS6v7W33q4OC4MvNflpY/exec`
 
-### Changing Configuration
-When switching between projects:
+### Switching projects
 1. Update `SPREADSHEET_ID` in `sg.js` line 4
 2. Update `SCRIPT_URL` in `script.js` lines 1-2
-3. Clear browser localStorage: `localStorage.clear()` then refresh
+3. Clear localStorage: `localStorage.clear()` then refresh
 4. If using new Apps Script, redeploy ("Deploy > New deployment")
 
-## Data Structure (Google Sheets)
-Required sheets: Categorias, Productos, Mesas, Recetas, Zonas, Cuentas, Ventas, Ventas_Detalle, Compras, Gastos
+## Google Sheets Structure
+Required sheets: Categorias, Productos, Compras, Ventas, resumen_diario, Ventas_Detalle, Compras_Detalle, Aprovechamientos, Gastos, Cierres, Mesas, Recetas, Cuentas, Zonas
 
 ### Productos sheet fields
-id, nombre, código, categoría, volumen_ml, contenido_oz, precio_botella, precio_onza, precio_ml, precio_venta, stock, fecha_creado
+id, nombre, código, categoría, precio_compra, precio_venta, precio_venta_2, precio_venta_3, precio_venta_4, stock, fecha_creado
+
+## Offline Support
+- Ventas/compras auto-save to localStorage when offline, sync on reconnect
+- Inventory cached in localStorage (24h TTL)
+- Offline indicator shows pending count: `updateOfflineIndicator()`
 
 ## Common Issues
-- **Seeing old data**: Clear localStorage (`localStorage.clear()`) before testing new sheet
-- **callGoogleScript not defined**: Ensure utils.js loads before script.js in HTML
+- **Old data**: Clear localStorage before testing new sheet
+- **callGoogleScript not defined**: Ensure utils.js loads before script.js in HTML (verified correct in index.html)
 - **Floor plan empty**: `initDefaultLayout()` auto-creates 5 stools + 4 tables if no data exists
 
 ## Theme
-Dark theme with neon green accent (#7CFF5A), black background (#000000), dark cards (#181818)
+Dark theme: neon green #7CFF5A, black #000000, cards #181818

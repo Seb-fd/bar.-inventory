@@ -2650,13 +2650,19 @@ body {
 
 /* Menú */
 .menu-container {
-  display: grid;
-  grid-template-columns: 1fr 350px;
-  gap: 1rem;
+  display: block;
 }
 
 .menu-main {
   min-width: 0;
+}
+
+/* ========================================================
+   SECCIÓN FLOOR PLAN - OCULTADA TEMPORALMENTE
+   Reason: No funciona correctamente, necesita corrección
+   ======================================================== */
+#floorPlan {
+  display: none !important;
 }
 
 .menu-filters {
@@ -3203,6 +3209,10 @@ body {
   cursor: not-allowed;
 }
 
+.mesa-cancelar-btn {
+  padding: 0.75rem 1rem;
+}
+
 .mesa-vacio {
   text-align: center;
   padding: 2rem;
@@ -3396,18 +3406,13 @@ body {
 /* Responsive */
 @media (max-width: 768px) {
   .menu-container {
-    grid-template-columns: 1fr;
-  }
-  
-  .cuenta-panel {
-    position: static;
-    order: -1;
+    display: block;
   }
   
   .kpi-grid {
     grid-template-columns: repeat(2, 1fr);
   }
-  
+
   .cuentas-grid {
     grid-template-columns: 1fr;
   }

@@ -2336,7 +2336,8 @@ function abrirCuenta(data) {
       sheet = ss.insertSheet(HOJA_CUENTAS);
       sheet.appendRow(CUENTAS_HEADERS);
     }
-    const id_cuenta = "CTA-" + (new Date().getTime().toString(36) + Math.random().toString(36).substring(2, 9)).toUpperCase();
+    // Usar el ID que nos mandan, o generar uno nuevo si no existe
+    const id_cuenta = data.id_cuenta || "CTA-" + (new Date().getTime().toString(36) + Math.random().toString(36).substring(2, 9)).toUpperCase();
     const now = new Date();
     const rowData = [
       id_cuenta,
