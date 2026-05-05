@@ -384,7 +384,23 @@ function initBarSection(section) {
       if (typeof displayStatus === "function") {
         displayStatus("statusCuentas", "info", "Cargando cuentas...");
       }
-      renderCuentasMesas();
+      
+      // Cargar recetas si no están cargadas
+      if (typeof RecetasManager !== "undefined" && (!RecetasManager.recetas || RecetasManager.recetas.length === 0)) {
+        RecetasManager.init().then(() => {
+          renderCuentasMesas();
+          const cuentas = typeof CuentasManager !== "undefined" ? CuentasManager.getCuentasAbiertas() : [];
+          if (typeof displayStatus === "function") {
+            displayStatus("statusCuentas", "success", `${cuentas.length} cuentas`);
+          }
+        });
+      } else {
+        renderCuentasMesas();
+        const cuentas = typeof CuentasManager !== "undefined" ? CuentasManager.getCuentasAbiertas() : [];
+        if (typeof displayStatus === "function") {
+          displayStatus("statusCuentas", "success", `${cuentas.length} cuentas`);
+        }
+      }
       break;
     case "dashboard":
       actualizarDashboardBar();
@@ -1074,7 +1090,7 @@ async function calcularResumenFinanciero(fechaInicio = null, fechaFin = null) {
         const precioBotella = parseFloat(p.precio_botella) || 0;
         const contenidoOz = parseFloat(p.contenido_oz) || 1;
         const stockOz = parseFloat(p.stock) || 0;
-        return sum + (stockOz * precioBotella / contenidoOz);
+        return sum + (stockOz * precioBotella) / contenidoOz;
       }, 0);
     }
 
@@ -8621,7 +8637,8 @@ function actualizarPanelCuenta() {
       : null;
 
   if (!cuenta || !cuenta.items || cuenta.items.length === 0) {
-    if (itemsContainer) itemsContainer.innerHTML = '<div class="cuenta-vacio">Sin items</div>';
+    if (itemsContainer)
+      itemsContainer.innerHTML = '<div class="cuenta-vacio">Sin items</div>';
     if (subtotalEl) subtotalEl.textContent = "$0";
     if (totalEl) totalEl.textContent = "$0";
     return;
@@ -8720,14 +8737,21 @@ function abrirCocktailPersonalizado() {
 
   container.innerHTML = `
     <div class="pers-ing-row" style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
-      <select class="pers-producto" style="flex: 2;">
-        <option value="">Seleccionar...</option>
-        ${productos.map((p) => `<option value="${p.id}">${p.nombre}</option>`).join("")}
-      </select>
+      <input type="text" class="pers-producto" list="lista-productos-personalizado" placeholder="Buscar o escribir ingrediente..." style="flex: 2;">
       <input type="number" class="pers-cantidad" placeholder="oz" step="0.5" style="flex: 1;">
       <button onclick="this.parentElement.remove()" style="background: #FF6B6B; border: none; color: white; width: 30px;">&times;</button>
     </div>
   `;
+
+  // Agregar datalist solo una vez
+  if (!document.getElementById("lista-productos-personalizado")) {
+    const datalist = document.createElement("datalist");
+    datalist.id = "lista-productos-personalizado";
+    datalist.innerHTML = productos
+      .map((p) => `<option value="${p.nombre}">`)
+      .join("");
+    container.appendChild(datalist);
+  }
 
   document.getElementById("personalizadoModal").classList.remove("hidden");
 }
@@ -8743,14 +8767,21 @@ function agregarIngredientePersonalizado() {
   row.className = "pers-ing-row";
   row.style.cssText = "display: flex; gap: 0.5rem; margin-bottom: 0.5rem;";
   row.innerHTML = `
-    <select class="pers-producto" style="flex: 2;">
-      <option value="">Seleccionar...</option>
-      ${productos.map((p) => `<option value="${p.id}">${p.nombre}</option>`).join("")}
-    </select>
+    <input type="text" class="pers-producto" list="lista-productos-personalizado" placeholder="Buscar o escribir ingrediente..." style="flex: 2;">
     <input type="number" class="pers-cantidad" placeholder="oz" step="0.5" style="flex: 1;">
     <button onclick="this.parentElement.remove()" style="background: #FF6B6B; border: none; color: white; width: 30px;">&times;</button>
   `;
   container.appendChild(row);
+
+  // Agregar datalist solo una vez
+  if (!document.getElementById("lista-productos-personalizado")) {
+    const datalist = document.createElement("datalist");
+    datalist.id = "lista-productos-personalizado";
+    datalist.innerHTML = productos
+      .map((p) => `<option value="${p.nombre}">`)
+      .join("");
+    container.appendChild(datalist);
+  }
 }
 
 function agregarPersonalizadoACuenta() {
@@ -8783,19 +8814,19 @@ function agregarPersonalizadoACuenta() {
 
   // Primero verificar si viene de la sección cuentas
   const cuentaDestinoId = window._cuentaDestino;
-  
+
   if (cuentaDestinoId) {
     // Agregar a la cuenta específica de la sección cuentas
     let cuentas = CuentasManager.cuentasAbiertas || [];
-    let cuenta = cuentas.find(c => c.id_cuenta === cuentaDestinoId);
-    
+    let cuenta = cuentas.find((c) => c.id_cuenta === cuentaDestinoId);
+
     if (!cuenta) {
       if (typeof showToast === "function") {
         showToast("Cuenta no encontrada", "error");
       }
       return;
     }
-    
+
     CuentasManager.agregarItem(cuenta.id_cuenta, {
       tipo: "personalizado",
       nombre: nombre,
@@ -8805,7 +8836,7 @@ function agregarPersonalizadoACuenta() {
       notas: notas,
       ingredientes: ingredientes,
     });
-    
+
     window._cuentaDestino = null;
     renderCuentasMesas();
   } else {
@@ -8836,7 +8867,7 @@ function agregarPersonalizadoACuenta() {
   }
 
   cerrarModalPersonalizado();
-  
+
   if (typeof showToast === "function") {
     showToast("Personalizado agregado", "success");
   }
@@ -8918,8 +8949,10 @@ async function cancelarCuentaById(cuentaId) {
       cuentaRealId = cuentas[index].id_cuenta;
     }
   }
-  
-  const cuenta = CuentasManager.cuentasAbiertas.find(c => c.id_cuenta === cuentaRealId);
+
+  const cuenta = CuentasManager.cuentasAbiertas.find(
+    (c) => c.id_cuenta === cuentaRealId,
+  );
   if (!cuenta) {
     if (typeof showToast === "function") {
       showToast("Cuenta no encontrada", "error");
@@ -8930,11 +8963,11 @@ async function cancelarCuentaById(cuentaId) {
   if (confirm("¿Cancelar esta cuenta? Los items serán eliminados.")) {
     const idMesa = cuenta.id_mesa;
     await CuentasManager.cancelarCuenta(cuentaRealId);
-    
+
     if (typeof showToast === "function") {
       showToast("Cuenta cancelada", "info");
     }
-    
+
     renderCuentasMesas();
     actualizarResumenCuentas();
   }
@@ -9057,7 +9090,9 @@ function cerrarModalNuevaCuenta() {
 
 function crearNuevaCuenta() {
   const nombre = document.getElementById("nuevaCuentaNombre").value.trim();
-  const descripcion = document.getElementById("nuevaCuentaDescripcion").value.trim();
+  const descripcion = document
+    .getElementById("nuevaCuentaDescripcion")
+    .value.trim();
 
   if (!nombre) {
     if (typeof showToast === "function") {
@@ -9071,7 +9106,7 @@ function crearNuevaCuenta() {
   if (typeof CuentasManager !== "undefined") {
     const nuevaCuenta = CuentasManager.abrirCuenta({
       nombre_mesa: nombre,
-      descripcion: descripcion
+      descripcion: descripcion,
     });
 
     if (nuevaCuenta) {
@@ -9096,10 +9131,12 @@ function renderCuentasMesas() {
     return;
   }
 
-  const cuentas = typeof CuentasManager !== "undefined" ? CuentasManager.getCuentasAbiertas() : [];
-  const recetas = typeof RecetasManager !== "undefined" ? RecetasManager.recetas || [] : [];
-
-  console.log("[DEBUG] renderCuentasMesas - Cuentas:", cuentas.length);
+  const cuentas =
+    typeof CuentasManager !== "undefined"
+      ? CuentasManager.getCuentasAbiertas()
+      : [];
+  const recetas =
+    typeof RecetasManager !== "undefined" ? RecetasManager.recetas || [] : [];
 
   if (cuentas.length === 0) {
     container.innerHTML = `
@@ -9117,14 +9154,14 @@ function renderCuentasMesas() {
 
   let html = "";
 
-  cuentas.forEach(cuenta => {
+  cuentas.forEach((cuenta) => {
     const tieneItems = cuenta.items && cuenta.items.length > 0;
     const total = cuenta.total || 0;
     const cuentaId = cuenta.id_cuenta;
 
-const cuentaIndex = cuentas.indexOf(cuenta);
+    const cuentaIndex = cuentas.indexOf(cuenta);
     const htmlId = "cta-" + cuentaIndex;
-    
+
     html += `
       <div class="mesa-cuenta-card" data-cuenta-id="${htmlId}">
         <div class="mesa-cuenta-header" onclick="toggleCuenta('${htmlId}')">
@@ -9132,64 +9169,81 @@ const cuentaIndex = cuentas.indexOf(cuenta);
             <div class="mesa-icon">${(cuenta.nombre_mesa || "Cuenta").charAt(0)}</div>
             <div>
               <div class="mesa-nombre">${cuenta.nombre_mesa || "Cuenta"}</div>
-              <div class="mesa-estado ${tieneItems ? 'ocupada' : 'disponible'}">
-                ${tieneItems ? `${cuenta.items.length} items` : 'Vacía'}
+              <div class="mesa-estado ${tieneItems ? "ocupada" : "disponible"}">
+                ${tieneItems ? `${cuenta.items.length} items` : "Vacía"}
               </div>
             </div>
           </div>
           <div class="mesa-total">${formatearCOP(total)}</div>
+          <i class="fas fa-chevron-down mesa-expand-arrow"></i>
         </div>
         <div class="mesa-cuenta-content" id="cuenta-content-${htmlId}">
-          ${tieneItems ? `
+          ${
+            tieneItems
+              ? `
             <div class="mesa-cuenta-items" id="cuenta-items-${htmlId}">
-              ${cuenta.items.map((item) => `
+              ${cuenta.items
+                .map(
+                  (item) => `
                 <div class="mesa-item-row">
                   <div class="mesa-item-info">
                     <span class="mesa-item-nombre">${item.nombre}</span>
                     <span class="mesa-item-cantidad">${item.cantidad} x ${formatearCOP(item.precio_unitario || 0)}</span>
-                    ${item.notas ? `<span class="mesa-item-notas">📝 ${item.notas}</span>` : ''}
+                    ${item.notas ? `<span class="mesa-item-notas">📝 ${item.notas}</span>` : ""}
                   </div>
                   <div style="display: flex; align-items: center; gap: 0.5rem;">
                     <span class="mesa-item-precio">${formatearCOP(item.subtotal || 0)}</span>
                     <button class="mesa-item-eliminar" onclick="eliminarItemCuenta('${htmlId}', '${item.id}')">&times;</button>
                   </div>
                 </div>
-              `).join('')}
+              `,
+                )
+                .join("")}
             </div>
- ` : '<div class="mesa-vacio">Sin productos</div>'}
+ `
+              : '<div class="mesa-vacio">Sin productos</div>'
+          }
            
             <div class="mesa-agregar-productos">
               <button class="btn btn-secondary" onclick="toggleProductosLista('${htmlId}')" id="btn-productos-${htmlId}">
                 <i class="fas fa-plus"></i> Agregar Producto
               </button>
               <div class="mesa-productos-grid hidden" id="productos-lista-${htmlId}">
-                ${recetas.length > 0 ? recetas.map(r => `
+                ${
+                  recetas.length > 0
+                    ? recetas
+                        .map(
+                          (r) => `
                   <button class="btn btn-secondary mesa-producto-btn" onclick="agregarItemACuenta('${htmlId}', '${r.id_receta}', '${r.nombre}', ${r.precio_venta})">
                     <span class="nombre">${r.nombre}</span>
                     <span class="precio">${formatearCOP(r.precio_venta || 0)}</span>
                   </button>
-                `).join('') : '<div style="grid-column: 1 / -1; text-align: center; color: var(--hermit-text-secondary); font-size: 0.85rem; padding: 1rem;">Crea recetas primero en la sección Recetas</div>'}
+                `,
+                        )
+                        .join("")
+                    : '<div style="grid-column: 1 / -1; text-align: center; color: var(--hermit-text-secondary); font-size: 0.85rem; padding: 1rem;">Crea recetas primero en la sección Recetas</div>'
+                }
               </div>
               <button class="btn btn-secondary btn-personalizado-mesa" onclick="abrirPersonalizadoParaCuenta('${htmlId}')">
                 <i class="fas fa-flask"></i> Cóctel Personalizado
               </button>
             </div>
-            
-            <div class="mesa-cuenta-footer">
-              <div class="mesa-subtotal">
-                Total: <span>${formatearCOP(total)}</span>
-              </div>
-              <button class="btn primary-btn mesa-pagar-btn" 
-                onclick="pagarCuenta('${htmlId}')"
-                ${!tieneItems ? 'disabled' : ''}>
-                <i class="fas fa-credit-card"></i> Pagar
-              </button>
-              <button class="btn danger-btn mesa-cancelar-btn" 
-                onclick="cancelarCuentaById('${htmlId}')"
-                title="Cancelar y eliminar cuenta">
-                <i class="fas fa-times"></i> Cancelar
-              </button>
-            </div>
+        </div>
+        
+        <div class="mesa-cuenta-footer">
+          <div class="mesa-subtotal">
+            Total: <span>${formatearCOP(total)}</span>
+          </div>
+          <button class="btn primary-btn mesa-pagar-btn" 
+            onclick="pagarCuenta('${htmlId}')"
+            ${!tieneItems ? "disabled" : ""}>
+            <i class="fas fa-credit-card"></i> Pagar
+          </button>
+          <button class="btn danger-btn mesa-cancelar-btn" 
+            onclick="cancelarCuentaById('${htmlId}')"
+            title="Cancelar y eliminar cuenta">
+            <i class="fas fa-times"></i> Cancelar
+          </button>
         </div>
       </div>
     `;
@@ -9201,8 +9255,18 @@ const cuentaIndex = cuentas.indexOf(cuenta);
 
 function toggleCuenta(cuentaId) {
   const content = document.getElementById(`cuenta-content-${cuentaId}`);
+  const card = document.querySelector(
+    `.mesa-cuenta-card[data-cuenta-id="${cuentaId}"]`,
+  );
+  const arrow = card?.querySelector(".mesa-expand-arrow");
+
   if (content) {
-    content.classList.toggle('active');
+    content.classList.toggle("active");
+    if (arrow) {
+      arrow.style.transform = content.classList.contains("active")
+        ? "rotate(180deg)"
+        : "rotate(0deg)";
+    }
   }
 }
 
@@ -9210,8 +9274,8 @@ function toggleProductosLista(cuentaId) {
   const lista = document.getElementById(`productos-lista-${cuentaId}`);
   const btn = document.getElementById(`btn-productos-${cuentaId}`);
   if (lista) {
-    lista.classList.toggle('hidden');
-    if (lista.classList.contains('hidden')) {
+    lista.classList.toggle("hidden");
+    if (lista.classList.contains("hidden")) {
       btn.innerHTML = '<i class="fas fa-plus"></i> Agregar Producto';
     } else {
       btn.innerHTML = '<i class="fas fa-times"></i> Cancelar';
@@ -9223,17 +9287,21 @@ function toggleProductosLista(cuentaId) {
 
 async function actualizarCuentas() {
   if (typeof CuentasManager === "undefined") return;
-  
+
   if (typeof displayStatus === "function") {
     displayStatus("statusCuentas", "info", "Sincronizando cuentas...");
   }
-  
+
   try {
     await CuentasManager.restaurarCuentasDesdeBackend();
     renderCuentasMesas();
-    
+
     if (typeof displayStatus === "function") {
-      displayStatus("statusCuentas", "success", `${CuentasManager.cuentasAbiertas.length} cuentas cargadas`);
+      displayStatus(
+        "statusCuentas",
+        "success",
+        `${CuentasManager.cuentasAbiertas.length} cuentas cargadas`,
+      );
     }
   } catch (e) {
     if (typeof displayStatus === "function") {
@@ -9260,10 +9328,15 @@ function agregarItemACuenta(cuentaId, recetaId, nombre, precio) {
     }
   }
 
-  console.log("[DEBUG] AgregarItem - ID original:", cuentaId, "-> ID real:", cuentaRealId);
-
-  const receta = typeof RecetasManager !== "undefined" ? RecetasManager.recetas.find(r => r.id_receta === recetaId) : null;
-  const ingredientes = receta ? (typeof receta.ingredientes === "string" ? JSON.parse(receta.ingredientes) : receta.ingredientes || []) : [];
+  const receta =
+    typeof RecetasManager !== "undefined"
+      ? RecetasManager.recetas.find((r) => r.id_receta === recetaId)
+      : null;
+  const ingredientes = receta
+    ? typeof receta.ingredientes === "string"
+      ? JSON.parse(receta.ingredientes)
+      : receta.ingredientes || []
+    : [];
 
   // Usar cuentaRealId para agregar el item
   CuentasManager.agregarItem(cuentaRealId, {
@@ -9273,11 +9346,11 @@ function agregarItemACuenta(cuentaId, recetaId, nombre, precio) {
     cantidad: 1,
     cantidad_oz: 0,
     precio_unitario: precio,
-    ingredientes: ingredientes
+    ingredientes: ingredientes,
   });
 
   renderCuentasMesas();
-  
+
   if (typeof showToast === "function") {
     showToast(nombre + " agregado", "success");
   }
@@ -9292,7 +9365,7 @@ function eliminarItemCuenta(cuentaId, itemId) {
       cuentaRealId = cuentas[index].id_cuenta;
     }
   }
-  
+
   if (typeof CuentasManager !== "undefined") {
     CuentasManager.removerItem(cuentaRealId, itemId);
     renderCuentasMesas();
@@ -9312,7 +9385,7 @@ function abrirPersonalizadoParaCuenta(cuentaId) {
       cuentaRealId = cuentas[index].id_cuenta;
     }
   }
-  
+
   window._cuentaDestino = cuentaRealId;
   if (typeof abrirCocktailPersonalizado === "function") {
     abrirCocktailPersonalizado();
@@ -9329,10 +9402,11 @@ async function pagarCuenta(cuentaId) {
       cuentaRealId = cuentas[index].id_cuenta;
     }
   }
-  
-  const cuentas = typeof CuentasManager !== "undefined" ? CuentasManager.cuentasAbiertas : [];
-  const cuenta = cuentas.find(c => c.id_cuenta === cuentaRealId);
-  
+
+  const cuentas =
+    typeof CuentasManager !== "undefined" ? CuentasManager.cuentasAbiertas : [];
+  const cuenta = cuentas.find((c) => c.id_cuenta === cuentaRealId);
+
   if (!cuenta || !cuenta.items || cuenta.items.length === 0) {
     if (typeof showToast === "function") {
       showToast("No hay productos en la cuenta", "error");
@@ -9340,9 +9414,11 @@ async function pagarCuenta(cuentaId) {
     return;
   }
 
-  const btn = document.querySelector(`.mesa-cuenta-card[data-cuenta-id="${cuentaId}"] .mesa-pagar-btn`);
+  const btn = document.querySelector(
+    `.mesa-cuenta-card[data-cuenta-id="${cuentaId}"] .mesa-pagar-btn`,
+  );
   const originalText = btn ? btn.innerHTML : "Pagar";
-  
+
   if (btn) {
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
     btn.disabled = true;
@@ -9357,21 +9433,23 @@ async function pagarCuenta(cuentaId) {
       cambio: 0,
       descuento: 0,
       items: cuenta.items,
-      estado: "cerrada"
+      estado: "cerrada",
     });
 
     if (result.status === "success") {
       // Eliminar la cuenta local
       if (typeof CuentasManager !== "undefined") {
-        const idx = CuentasManager.cuentasAbiertas.findIndex(c => c.id_cuenta === cuentaRealId);
+        const idx = CuentasManager.cuentasAbiertas.findIndex(
+          (c) => c.id_cuenta === cuentaRealId,
+        );
         if (idx !== -1) {
           CuentasManager.cuentasAbiertas.splice(idx, 1);
           CuentasManager.guardarEnLocalStorage();
         }
       }
-      
+
       renderCuentasMesas();
-      
+
       if (typeof showToast === "function") {
         showToast("Cuenta pagada correctamente", "success");
       }
@@ -9393,10 +9471,15 @@ async function pagarCuenta(cuentaId) {
 }
 
 function actualizarResumenCuentas() {
-  const resumen = typeof CuentasManager !== "undefined" ? CuentasManager.obtenerResumenDia() : { totalVentas: 0, totalCuentas: 0, ticketPromedio: 0 };
+  const resumen =
+    typeof CuentasManager !== "undefined"
+      ? CuentasManager.obtenerResumenDia()
+      : { totalVentas: 0, totalCuentas: 0, ticketPromedio: 0 };
   document.getElementById("cuentasPagadas").textContent = resumen.totalCuentas;
-  document.getElementById("ventasDia").textContent = "$" + formatearCOP(resumen.totalVentas);
-  document.getElementById("ticketPromedio").textContent = "$" + formatearCOP(resumen.ticketPromedio);
+  document.getElementById("ventasDia").textContent =
+    "$" + formatearCOP(resumen.totalVentas);
+  document.getElementById("ticketPromedio").textContent =
+    "$" + formatearCOP(resumen.ticketPromedio);
 }
 
 // Dashboard Bar
@@ -9542,7 +9625,7 @@ function editarReceta(id) {
 
 async function eliminarReceta(id) {
   if (!confirm("¿Eliminar esta receta?")) return;
-  
+
   try {
     showToast("Eliminando...", "info", 1500);
     await RecetasManager.eliminarReceta(id);

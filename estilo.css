@@ -3091,6 +3091,13 @@ body {
   color: var(--hermit-accent);
 }
 
+.mesa-cuenta-header .mesa-expand-arrow {
+  font-size: 0.875rem;
+  color: var(--hermit-text-secondary);
+  transition: transform 0.2s ease;
+  margin-left: 0.5rem;
+}
+
 .mesa-cuenta-content {
   display: none;
   padding: 1rem;
@@ -3098,6 +3105,10 @@ body {
 
 .mesa-cuenta-content.active {
   display: block;
+}
+
+.mesa-cuenta-content.active + .mesa-cuenta-footer .mesa-expand-arrow {
+  transform: rotate(180deg);
 }
 
 .mesa-cuenta-items {
@@ -3160,6 +3171,7 @@ body {
   grid-template-columns: repeat(2, 1fr);
   gap: 0.5rem;
   margin-bottom: 1rem;
+  margin-top: 0.75rem;
 }
 
 .mesa-producto-btn {
@@ -3184,7 +3196,8 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-top: 1rem;
+  padding: 1rem;
+  margin-top: 0.5rem;
   border-top: 1px solid var(--hermit-border);
 }
 
