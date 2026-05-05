@@ -8987,6 +8987,254 @@ function cerrarModalPago() {
   document.getElementById("pagoModal").classList.add("hidden");
 }
 
+let cuentaPagoActual = null;
+let propinaporcentajeActual = 7;
+
+function abrirModalPagoCuenta(cuentaId) {
+  let cuentaRealId = cuentaId;
+  if (cuentaId.startsWith("cta-")) {
+    const index = parseInt(cuentaId.replace("cta-", ""));
+    const cuentas = CuentasManager.cuentasAbiertas;
+    if (index >= 0 && index < cuentas.length) {
+      cuentaRealId = cuentas[index].id_cuenta;
+    }
+  }
+
+  const cuenta = CuentasManager.cuentasAbiertas.find(c => c.id_cuenta === cuentaRealId);
+  if (!cuenta || !cuenta.items || cuenta.items.length === 0) {
+    if (typeof showToast === "function") {
+      showToast("No hay productos en la cuenta", "error");
+    }
+    return;
+  }
+
+  cuentaPagoActual = cuenta;
+  propinaporcentajeActual = 7;
+  tienePropina = true;
+  const propBase = Math.round((cuenta.total || 0) * 7 / 100);
+  montoPropinaCalculado = redondearPropina(propBase);
+  
+  document.getElementById("incluirPropina").checked = true;
+  document.getElementById("propinaInputContainer").style.display = "flex";
+  document.getElementById("propinaInput").value = "7";
+  document.getElementById("propinaTipo").value = "pct";
+  
+  document.getElementById("metodoPagoCuenta").value = "efectivo";
+  document.getElementById("montoRecibidoContainer").style.display = "block";
+  document.getElementById("montoRecibido").value = "";
+  document.getElementById("pagoCambio").textContent = "$0";
+  
+actualizarTotalesPago();
+  
+  const listaProductos = document.getElementById("pagoProductosLista");
+  listaProductos.innerHTML = cuenta.items.map(item => `
+    <div style="display: flex; justify-content: space-between; padding: 0.5rem; border-bottom: 1px solid var(--hermit-border);">
+      <span>${item.cantidad}x ${item.nombre}</span>
+      <span>${formatearCOP(item.subtotal || 0)}</span>
+    </div>
+  `).join("");
+
+  document.getElementById("pagoCuentaModal").classList.remove("hidden");
+}
+
+function cerrarModalPagoCuenta() {
+  document.getElementById("pagoCuentaModal").classList.add("hidden");
+  cuentaPagoActual = null;
+}
+
+let tienePropina = true;
+let montoPropinaCalculado = 0;
+
+function togglePropina() {
+  tienePropina = document.getElementById("incluirPropina").checked;
+  const container = document.getElementById("propinaInputContainer");
+  container.style.display = tienePropina ? "flex" : "none";
+  actualizarTotalesPago();
+}
+
+function calcularPropinaEnModal() {
+  if (!cuentaPagoActual) return;
+  
+  const input = document.getElementById("propinaInput");
+  const tipo = document.getElementById("propinaTipo").value;
+  const valor = parseFloat(input.value) || 0;
+  const subtotal = cuentaPagoActual.total || 0;
+  
+  if (valor > 0) {
+    if (tipo === "pct") {
+      montoPropinaCalculado = Math.round(subtotal * valor / 100);
+      propinaporcentajeActual = valor;
+    } else {
+      montoPropinaCalculado = valor;
+      propinaporcentajeActual = subtotal > 0 ? (valor / subtotal * 100) : 0;
+    }
+  } else {
+    montoPropinaCalculado = 0;
+    propinaporcentajeActual = 0;
+  }
+  
+  montoPropinaCalculado = redondearPropina(montoPropinaCalculado);
+  
+  actualizarTotalesPago();
+}
+
+function redondearPropina(monto) {
+  const MINIMO = 100;
+  const REDONDEO_A = 100;
+  
+  if (monto <= 0) return 0;
+  
+  if (monto <= MINIMO) return MINIMO;
+  
+  return Math.ceil(monto / REDONDEO_A) * REDONDEO_A;
+}
+
+function toggleMetodoPago() {
+  const metodo = document.getElementById("metodoPagoCuenta").value;
+  const montoContainer = document.getElementById("montoRecibidoContainer");
+  montoContainer.style.display = metodo === "efectivo" ? "block" : "none";
+  
+  if (metodo !== "efectivo") {
+    document.getElementById("montoRecibido").value = "";
+    document.getElementById("pagoCambio").textContent = "$0";
+  }
+}
+
+function calcularCambio() {
+  const montoRecibidoInput = document.getElementById("montoRecibido");
+  const montoRecibidoRaw = montoRecibidoInput.value.replace(/[$\.\s]/g, "");
+  const montoRecibido = parseFloat(montoRecibidoRaw) || 0;
+  
+  const total = parseFloat(document.getElementById("pagoTotal").dataset.total) || 0;
+  const cambio = Math.max(0, montoRecibido - total);
+  
+  document.getElementById("pagoCambio").textContent = formatearCOP(cambio);
+}
+
+function formatearInputMonto(input) {
+  let valor = input.value.replace(/\D/g, "");
+  if (valor) {
+    valor = parseInt(valor).toString();
+    input.value = formatearCOP(parseInt(valor));
+  } else {
+    input.value = "";
+  }
+}
+
+function actualizarTotalesPago() {
+  if (!cuentaPagoActual) return;
+
+  const subtotal = cuentaPagoActual.total || 0;
+  const montoPropina = tienePropina ? montoPropinaCalculado : 0;
+  const total = subtotal + montoPropina;
+
+  document.getElementById("pagoSubtotal").textContent = formatearCOP(subtotal);
+  document.getElementById("pagoPropina").textContent = formatearCOP(montoPropina);
+  const totalEl = document.getElementById("pagoTotal");
+  totalEl.textContent = formatearCOP(total);
+  totalEl.dataset.total = total;
+  
+  // Recalcular cambio si hay monto recibido
+  if (document.getElementById("montoRecibido").value) {
+    calcularCambio();
+  }
+}
+
+async function procesarPagoCuenta() {
+  if (!cuentaPagoActual) {
+    if (typeof showToast === "function") {
+      showToast("Error: cuenta no encontrada", "error");
+    }
+    return;
+  }
+
+  const btn = document.getElementById("btnConfirmarPagoCuenta");
+  const originalText = btn ? btn.innerHTML : "Pagar";
+  
+  if (btn) {
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
+    btn.disabled = true;
+  }
+
+  try {
+    const metodoPago = document.getElementById("metodoPagoCuenta").value;
+    const subtotal = cuentaPagoActual.total || 0;
+    const montoPropina = tienePropina ? montoPropinaCalculado : 0;
+    
+    const itemsConPropina = [...cuentaPagoActual.items];
+    
+    if (montoPropina > 0) {
+      itemsConPropina.push({
+        id: "ITEM-" + Date.now() + "-propina",
+        tipo: "propina",
+        nombre: "Propina",
+        cantidad: 1,
+        cantidad_oz: 0,
+        precio_unitario: montoPropina,
+        subtotal: montoPropina,
+        notas: document.getElementById("propinaTipo").value === "pct" 
+          ? `${propinaporcentajeActual.toFixed(1)}%` 
+          : `$${formatearCOP(montoPropina)}`,
+        timestamp: new Date().toISOString(),
+        ingredientes: []
+      });
+    }
+
+    const total = subtotal + montoPropina;
+    
+    let montoRecibidoCalculado = total;
+    let cambioCalculado = 0;
+    
+    if (metodoPago === "efectivo") {
+      montoRecibidoCalculado = parseFloat(document.getElementById("montoRecibido").value) || total;
+      cambioCalculado = Math.max(0, montoRecibidoCalculado - total);
+    }
+
+    const result = await callGoogleScript("cerrarCuenta", {
+      id_cuenta: cuentaPagoActual.id_cuenta,
+      nombre_mesa: cuentaPagoActual.nombre_mesa || "Cuenta",
+      forma_pago: metodoPago,
+      monto_recibido: montoRecibidoCalculado,
+      cambio: cambioCalculado,
+      descuento: 0,
+      items: itemsConPropina,
+      estado: "cerrada",
+    });
+
+    if (result.status === "success") {
+      if (typeof CuentasManager !== "undefined") {
+        const idx = CuentasManager.cuentasAbiertas.findIndex(
+          (c) => c.id_cuenta === cuentaPagoActual.id_cuenta,
+        );
+        if (idx !== -1) {
+          CuentasManager.cuentasAbiertas.splice(idx, 1);
+          CuentasManager.guardarEnLocalStorage();
+        }
+      }
+
+      cerrarModalPagoCuenta();
+      renderCuentasMesas();
+
+      if (typeof showToast === "function") {
+        showToast("Cuenta pagada correctamente", "success");
+      }
+    } else {
+      if (typeof showToast === "function") {
+        showToast("Error: " + result.message, "error");
+      }
+    }
+  } catch (error) {
+    if (typeof showToast === "function") {
+      showToast("Error al procesar pago: " + error.message, "error");
+    }
+  } finally {
+    if (btn) {
+      btn.innerHTML = originalText;
+      btn.disabled = false;
+    }
+  }
+}
+
 async function procesarPago() {
   const cuenta = CuentasManager.getCuentaActiva();
   if (!cuenta) return;
@@ -9351,6 +9599,20 @@ function agregarItemACuenta(cuentaId, recetaId, nombre, precio) {
 
   renderCuentasMesas();
 
+  const content = document.getElementById(`cuenta-content-${cuentaId}`);
+  if (content) {
+    content.classList.add("active");
+  }
+
+  const lista = document.getElementById(`productos-lista-${cuentaId}`);
+  if (lista) {
+    lista.classList.remove("hidden");
+    const btn = document.getElementById(`btn-productos-${cuentaId}`);
+    if (btn) {
+      btn.innerHTML = '<i class="fas fa-times"></i> Cancelar';
+    }
+  }
+
   if (typeof showToast === "function") {
     showToast(nombre + " agregado", "success");
   }
@@ -9369,6 +9631,12 @@ function eliminarItemCuenta(cuentaId, itemId) {
   if (typeof CuentasManager !== "undefined") {
     CuentasManager.removerItem(cuentaRealId, itemId);
     renderCuentasMesas();
+    
+    const content = document.getElementById(`cuenta-content-${cuentaId}`);
+    if (content) {
+      content.classList.add("active");
+    }
+    
     if (typeof showToast === "function") {
       showToast("Producto eliminado", "info");
     }
@@ -9393,81 +9661,7 @@ function abrirPersonalizadoParaCuenta(cuentaId) {
 }
 
 async function pagarCuenta(cuentaId) {
-  // Resolver ID real
-  let cuentaRealId = cuentaId;
-  if (cuentaId.startsWith("cta-")) {
-    const index = parseInt(cuentaId.replace("cta-", ""));
-    const cuentas = CuentasManager.cuentasAbiertas;
-    if (index >= 0 && index < cuentas.length) {
-      cuentaRealId = cuentas[index].id_cuenta;
-    }
-  }
-
-  const cuentas =
-    typeof CuentasManager !== "undefined" ? CuentasManager.cuentasAbiertas : [];
-  const cuenta = cuentas.find((c) => c.id_cuenta === cuentaRealId);
-
-  if (!cuenta || !cuenta.items || cuenta.items.length === 0) {
-    if (typeof showToast === "function") {
-      showToast("No hay productos en la cuenta", "error");
-    }
-    return;
-  }
-
-  const btn = document.querySelector(
-    `.mesa-cuenta-card[data-cuenta-id="${cuentaId}"] .mesa-pagar-btn`,
-  );
-  const originalText = btn ? btn.innerHTML : "Pagar";
-
-  if (btn) {
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
-    btn.disabled = true;
-  }
-
-  try {
-    const result = await callGoogleScript("cerrarCuenta", {
-      id_cuenta: cuenta.id_cuenta,
-      nombre_mesa: cuenta.nombre_mesa || "Cuenta",
-      forma_pago: "efectivo",
-      monto_recibido: cuenta.total,
-      cambio: 0,
-      descuento: 0,
-      items: cuenta.items,
-      estado: "cerrada",
-    });
-
-    if (result.status === "success") {
-      // Eliminar la cuenta local
-      if (typeof CuentasManager !== "undefined") {
-        const idx = CuentasManager.cuentasAbiertas.findIndex(
-          (c) => c.id_cuenta === cuentaRealId,
-        );
-        if (idx !== -1) {
-          CuentasManager.cuentasAbiertas.splice(idx, 1);
-          CuentasManager.guardarEnLocalStorage();
-        }
-      }
-
-      renderCuentasMesas();
-
-      if (typeof showToast === "function") {
-        showToast("Cuenta pagada correctamente", "success");
-      }
-    } else {
-      if (typeof showToast === "function") {
-        showToast("Error: " + result.message, "error");
-      }
-    }
-  } catch (error) {
-    if (typeof showToast === "function") {
-      showToast("Error al procesar pago: " + error.message, "error");
-    }
-  } finally {
-    if (btn) {
-      btn.innerHTML = originalText;
-      btn.disabled = false;
-    }
-  }
+  abrirModalPagoCuenta(cuentaId);
 }
 
 function actualizarResumenCuentas() {

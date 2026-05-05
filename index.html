@@ -280,7 +280,7 @@
                 </div>
                 <div class="stat-content">
                   <div class="stat-value" id="totalSaldoNequi">$0</div>
-                  <div class="stat-label">Saldo Nequi</div>
+                  <div class="stat-label">Saldo Banco</div>
                 </div>
               </div>
               <div class="stat-card cash-card">
@@ -2175,13 +2175,21 @@
               <i class="fas fa-receipt"></i> Cuentas - The Hermit Cocktail Bar
             </h2>
             <div class="section-actions">
-              <button class="btn secondary-btn" onclick="actualizarCuentas()" title="Actualizar cuentas">
+              <button
+                class="btn secondary-btn"
+                onclick="actualizarCuentas()"
+                title="Actualizar cuentas"
+              >
                 <i class="fas fa-sync"></i> Actualizar
               </button>
               <button class="btn primary-btn" onclick="abrirModalNuevaCuenta()">
                 <i class="fas fa-plus"></i> Abrir Cuenta
               </button>
-              <button class="btn danger-btn" onclick="resetearCuentasLocal()" title="Limpia cuentas del navegador (no del servidor)">
+              <button
+                class="btn danger-btn"
+                onclick="resetearCuentasLocal()"
+                title="Limpia cuentas del navegador (no del servidor)"
+              >
                 <i class="fas fa-trash"></i> Limpiar
               </button>
             </div>
@@ -2193,7 +2201,7 @@
             <div class="mesas-disponibles-grid" id="mesasCuentasGrid">
               <!-- Cuentas se renderizarán aquí -->
             </div>
-            
+
             <div class="cuentas-resumen">
               <div class="resumen-card">
                 <h4>Resumen del Día</h4>
@@ -2809,16 +2817,28 @@
         <div class="modal-body-bar">
           <div class="form-group">
             <label>Nombre de la cuenta / Mesa</label>
-            <input type="text" id="nuevaCuentaNombre" placeholder="Ej: Mesa 1, Barra, etc.">
+            <input
+              type="text"
+              id="nuevaCuentaNombre"
+              placeholder="Ej: Mesa 1, Barra, etc."
+            />
           </div>
           <div class="form-group">
             <label>Descripción (opcional)</label>
-            <textarea id="nuevaCuentaDescripcion" rows="2" placeholder="Notas adicionales..."></textarea>
+            <textarea
+              id="nuevaCuentaDescripcion"
+              rows="2"
+              placeholder="Notas adicionales..."
+            ></textarea>
           </div>
         </div>
         <div class="modal-footer-bar">
-          <button class="btn btn-secondary" onclick="cerrarModalNuevaCuenta()">Cancelar</button>
-          <button class="btn primary-btn" onclick="crearNuevaCuenta()">Abrir Cuenta</button>
+          <button class="btn btn-secondary" onclick="cerrarModalNuevaCuenta()">
+            Cancelar
+          </button>
+          <button class="btn primary-btn" onclick="crearNuevaCuenta()">
+            Abrir Cuenta
+          </button>
         </div>
       </div>
     </div>
@@ -2986,45 +3006,157 @@
       </div>
     </div>
 
-    <!-- Modal支付 Cuenta -->
-    <div id="pagoModal" class="modal-bar hidden">
-      <div class="modal-content-bar">
+    <!-- Modal Pago Cuenta -->
+    <div id="pagoCuentaModal" class="modal-bar hidden">
+      <div class="modal-content-bar" style="max-width: 450px">
         <div class="modal-header-bar">
           <h3><i class="fas fa-credit-card"></i> Pagar Cuenta</h3>
-          <button onclick="cerrarModalPago()">&times;</button>
+          <button onclick="cerrarModalPagoCuenta()">&times;</button>
         </div>
         <div class="modal-body-bar">
+          <div
+            class="pago-productos-lista"
+            id="pagoProductosLista"
+            style="
+              max-height: 150px;
+              overflow-y: auto;
+              margin-bottom: 1rem;
+              border: 1px solid var(--hermit-border);
+              border-radius: 8px;
+              padding: 0.5rem;
+            "
+          >
+            <!-- Productos se cargarán aquí -->
+          </div>
+
           <div class="form-group">
-            <label>Total a Pagar</label>
-            <div
-              id="montoPagoTotal"
+            <label
               style="
-                font-size: 1.5rem;
-                color: var(--hermit-accent);
-                font-weight: bold;
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                cursor: pointer;
               "
             >
-              $0
+              <input
+                type="checkbox"
+                id="incluirPropina"
+                checked
+                onchange="togglePropina()"
+                style="width: 18px; height: 18px"
+              />
+              <span>Incluir Propina</span>
+            </label>
+            <div
+              id="propinaInputContainer"
+              style="display: flex; gap: 0.5rem; margin-top: 0.5rem"
+            >
+              <input
+                type="number"
+                id="propinaInput"
+                placeholder="7"
+                step="1"
+                value="7"
+                style="flex: 1"
+                oninput="calcularPropinaEnModal()"
+              />
+              <select
+                id="propinaTipo"
+                onchange="calcularPropinaEnModal()"
+                style="width: 80px"
+              >
+                <option value="pct">%</option>
+                <option value="monto">$</option>
+              </select>
             </div>
           </div>
-          <div class="form-group">
+
+          <div
+            class="pago-totales"
+            style="
+              margin-top: 1rem;
+              padding-top: 1rem;
+              border-top: 1px solid var(--hermit-border);
+            "
+          >
+            <div
+              class="pago-total-row"
+              style="
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 0.5rem;
+              "
+            >
+              <span>Subtotal:</span>
+              <span id="pagoSubtotal">$0</span>
+            </div>
+            <div
+              class="pago-total-row"
+              style="
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 0.5rem;
+              "
+            >
+              <span>Propina:</span>
+              <span id="pagoPropina">$0</span>
+            </div>
+            <div
+              class="pago-total-row"
+              style="
+                display: flex;
+                justify-content: space-between;
+                font-size: 1.25rem;
+                font-weight: bold;
+                color: var(--hermit-accent);
+              "
+            >
+              <span>Total:</span>
+              <span id="pagoTotal">$0</span>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-top: 1rem">
             <label>Método de Pago</label>
-            <select id="metodoPago">
+            <select id="metodoPagoCuenta" onchange="toggleMetodoPago()">
               <option value="efectivo">Efectivo</option>
-              <option value="tarjeta">Tarjeta</option>
               <option value="transferencia">Transferencia</option>
             </select>
           </div>
-          <div class="form-group">
+
+          <div
+            class="form-group"
+            id="montoRecibidoContainer"
+            style="display: none"
+          >
             <label>Monto Recibido</label>
-            <input type="number" id="montoRecibido" step="1" />
+            <input
+              type="text"
+              id="montoRecibido"
+              placeholder="$0"
+              oninput="calcularCambio(); formatearInputMonto(this)"
+              onkeyup="formatearInputMonto(this)"
+            />
+            <div
+              style="
+                margin-top: 0.5rem;
+                font-weight: bold;
+                color: var(--hermit-accent);
+              "
+            >
+              Cambio: <span id="pagoCambio">$0</span>
+            </div>
           </div>
         </div>
         <div class="modal-footer-bar">
-          <button class="btn btn-secondary" onclick="cerrarModalPago()">
+          <button class="btn btn-secondary" onclick="cerrarModalPagoCuenta()">
             Cancelar
           </button>
-          <button class="btn primary-btn" onclick="procesarPago()">
+          <button
+            class="btn primary-btn"
+            id="btnConfirmarPagoCuenta"
+            onclick="procesarPagoCuenta()"
+          >
             Confirmar Pago
           </button>
         </div>

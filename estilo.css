@@ -3430,3 +3430,21 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+.pago-productos-lista::-webkit-scrollbar {
+  width: 6px;
+}
+
+.pago-productos-lista::-webkit-scrollbar-thumb {
+  background: var(--hermit-border);
+  border-radius: 3px;
+}
+
+.propina-botones .btn {
+  padding: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.propina-botones .btn.primary-btn {
+  background: var(--hermit-accent);
+}
