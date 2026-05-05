@@ -56,13 +56,17 @@ const FloorPlanManager = {
       }
       
       const mesasRes = await callGoogleScript("obtenerMesas", {});
-      if (mesasRes.status === "success") {
-        this.mesas = mesasRes.data || [];
+      if (mesasRes.status === "success" && mesasRes.data && mesasRes.data.length > 0) {
+        this.mesas = mesasRes.data;
+      } else if (mesasRes.status === "error") {
+        console.error("[FloorPlan] Error al cargar mesas:", mesasRes.message);
+        this.mesas = [];
+      } else {
+        console.log("[FloorPlan] No hay mesas en backend - crea manualmente");
+        this.mesas = [];
       }
       
-      if (this.mesas.length === 0) {
-        await this.initDefaultLayout();
-      }
+      // NO crear default automaticamente - el usuario debe crear manualmente
       
       this.render();
     } catch (e) {
@@ -193,31 +197,23 @@ const FloorPlanManager = {
       }
     ];
 
+    const existingRes = await callGoogleScript("obtenerMesas", {});
+    if (existingRes.status === "success" && existingRes.data && existingRes.data.length > 0) {
+      this.mesas = existingRes.data;
+      console.log("[DEBUG] Mesas cargadas desde backend:", this.mesas.length);
+      return;
+    }
+
     for (const mesa of defaultMesas) {
       try {
-        console.log("[DEBUG] Creando mesa:", mesa.id_mesa, mesa);
         const result = await callGoogleScript("crearMesa", mesa);
-        console.log("[DEBUG] Respuesta crearMesa:", mesa.id_mesa, JSON.stringify(result));
         if (result.status !== "success") {
           console.error("Error creando mesa:", mesa.id_mesa, result);
-        } else {
-          console.log("[DEBUG] Mesa creada exitosamente:", mesa.id_mesa, result.id_mesa);
         }
       } catch (e) {
         console.error("Error creando mesa (excepción):", mesa.id_mesa, e);
       }
     }
-
-    const mesasRes = await callGoogleScript("obtenerMesas", {});
-    console.log("[DEBUG] Respuesta obtenerMesas:", JSON.stringify(mesasRes));
-    if (mesasRes.status === "success") {
-      this.mesas = mesasRes.data || defaultMesas;
-      console.log("[DEBUG] Mesas cargadas desde backend:", this.mesas.length);
-    } else {
-      console.log("[DEBUG] Error obteniendo mesas, usando default:", mesasRes);
-      this.mesas = defaultMesas;
-    }
-    console.log("[DEBUG] Layout default inicializado con", this.mesas.length, "mesas");
   },
 
   render() {

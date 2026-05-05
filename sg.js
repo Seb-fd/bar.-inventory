@@ -1095,6 +1095,7 @@ function registrarVentaPOS(data) {
         item.subtotal_original,
         item.subtotal_final,
         metodoPago,
+        item.ingredientes ? JSON.stringify(item.ingredientes) : "",
       ]);
     }
   } catch (e) {
@@ -2597,9 +2598,10 @@ function descontarInventarioPorVenta(items) {
     const stockInsuficiente = [];
     Object.keys(deducciones).forEach((pid) => {
       const d = deducciones[pid];
-      const nuevoStock = Math.max(0, d.stockInicial - d.totalOz);
+      const mlDescontados = d.totalOz * BAR_CONFIG.ConversionOZ_ML;
+      const nuevoStock = Math.max(0, d.stockInicial - mlDescontados);
       sheetProductos.getRange(d.rowIndex + 1, stockCol + 1).setValue(nuevoStock);
-      if (d.totalOz > d.stockInicial) {
+      if (mlDescontados > d.stockInicial) {
         stockInsuficiente.push({
           producto_id: pid,
           stock_disponible: d.stockInicial,

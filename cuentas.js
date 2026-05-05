@@ -342,6 +342,26 @@ const CuentasManager = {
   }
 };
 
+function resetearCuentasLocal() {
+  if (!confirm("¿Limpiar cuentas del navegador?\n\nEsto NO elimina las cuentas del servidor (Google Sheet).\nSolo limpia los datos locales del navegador.\n\n¿Continuar?")) return;
+  
+  try {
+    CuentasManager.detenerSincronizacion();
+    localStorage.removeItem("hermit_cuentas_abiertas");
+    localStorage.removeItem("hermit_ultima_sincronizacion");
+    CuentasManager.cuentasAbiertas = [];
+    CuentasManager.cuentaActiva = null;
+    CuentasManager._initialized = false;
+    CuentasManager.guardarEnLocalStorage();
+    CuentasManager.actualizarUI();
+    console.log("[CUENTAS] Local storage limpiado");
+    alert("Cuentas del navegador limpiadas.\nRecarga la página.");
+    location.reload();
+  } catch (e) {
+    console.error("[CUENTAS] Error:", e);
+  }
+}
+
 async function descontarInventarioPorVenta(items) {
   try {
     const result = await callGoogleScript("descontarInventarioPorVenta", { items });

@@ -2216,11 +2216,19 @@
             <h2>
               <i class="fas fa-receipt"></i> Cuentas - The Hermit Cocktail Bar
             </h2>
+            <div class="section-actions">
+              <button class="btn primary-btn" onclick="abrirModalNuevaCuenta()">
+                <i class="fas fa-plus"></i> Abrir Cuenta
+              </button>
+              <button class="btn danger-btn" onclick="resetearCuentasLocal()" title="Limpia cuentas del navegador (no del servidor)">
+                <i class="fas fa-trash"></i> Limpiar
+              </button>
+            </div>
           </div>
 
           <div class="cuentas-mesas-container">
             <div class="mesas-disponibles-grid" id="mesasCuentasGrid">
-              <!-- Mesas se renderizarán aquí -->
+              <!-- Cuentas se renderizarán aquí -->
             </div>
             
             <div class="cuentas-resumen">
@@ -2826,6 +2834,30 @@
     <!-- THE HERMIT COCKTAIL BAR - MODALES                      -->
     <!-- ======================================================= -->
 
+    <!-- Modal Nueva Cuenta -->
+    <div id="modalNuevaCuenta" class="modal-bar hidden">
+      <div class="modal-content-bar">
+        <div class="modal-header-bar">
+          <h3><i class="fas fa-receipt"></i> Nueva Cuenta</h3>
+          <button onclick="cerrarModalNuevaCuenta()">&times;</button>
+        </div>
+        <div class="modal-body-bar">
+          <div class="form-group">
+            <label>Nombre de la cuenta / Mesa</label>
+            <input type="text" id="nuevaCuentaNombre" placeholder="Ej: Mesa 1, Barra, etc.">
+          </div>
+          <div class="form-group">
+            <label>Descripción (opcional)</label>
+            <textarea id="nuevaCuentaDescripcion" rows="2" placeholder="Notas adicionales..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer-bar">
+          <button class="btn btn-secondary" onclick="cerrarModalNuevaCuenta()">Cancelar</button>
+          <button class="btn primary-btn" onclick="crearNuevaCuenta()">Abrir Cuenta</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Modal Receta -->
     <div id="recetaModal" class="modal-bar hidden">
       <div class="modal-content-bar">
@@ -3041,5 +3073,11 @@
     <script src="cuentas.js"></script>
     <script src="recetas.js"></script>
     <script src="floor-plan.js"></script>
+    <script>
+      // Initialize offline support (ventas offline queue, online/offline event listeners)
+      if (typeof initOfflineSupport === "function") {
+        initOfflineSupport();
+      }
+    </script>
   </body>
 </html>

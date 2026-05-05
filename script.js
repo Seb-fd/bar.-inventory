@@ -3,6 +3,8 @@ const SCRIPT_URL =
 
 console.log("script.js loaded successfully");
 
+window.SCRIPT_URL = SCRIPT_URL;
+
 if (!SCRIPT_URL) {
   console.error(
     "CRITICAL: SCRIPT_URL is not defined. Network requests will fail.",
@@ -362,6 +364,7 @@ function irASeccion(id) {
 }
 
 function initBarSection(section) {
+  console.log("[DEBUG] initBarSection llamada con:", section);
   switch (section) {
     case "menu":
       if (typeof RecetasManager !== "undefined") {
@@ -378,25 +381,7 @@ function initBarSection(section) {
       }
       break;
     case "cuentas":
-      console.log("[DEBUG] Entrando sección cuentas");
-      if (typeof RecetasManager !== "undefined") {
-        if (RecetasManager.recetas && RecetasManager.recetas.length > 0) {
-          console.log("[DEBUG] Recetas ya cargadas, renderizando directo");
-          renderCuentasMesas();
-        } else {
-          console.log("[DEBUG] Recetas no cargadas, inicializando...");
-          RecetasManager.init().then(() => {
-            console.log("[DEBUG] Recetas cargadas:", RecetasManager.recetas.length);
-            renderCuentasMesas();
-          }).catch(err => {
-            console.error("[DEBUG] Error inicializando RecetasManager:", err);
-            renderCuentasMesas();
-          });
-        }
-      } else {
-        console.log("[DEBUG] RecetasManager undefined, renderizando");
-        renderCuentasMesas();
-      }
+      renderCuentasMesas();
       break;
     case "dashboard":
       actualizarDashboardBar();
@@ -447,6 +432,7 @@ function setupNavigation() {
     link.addEventListener("click", (e) => {
       e.preventDefault();
       const targetId = link.getAttribute("data-section");
+      console.log("[DEBUG] Nav click - targetId:", targetId);
 
       navLinks.forEach((l) => l.classList.remove("active"));
       link.classList.add("active");
@@ -1081,10 +1067,12 @@ async function calcularResumenFinanciero(fechaInicio = null, fechaFin = null) {
     // Valor Total Inventario - SIEMPRE sin filtro
     let valorTotalInventario = 0;
     if (productosData.status === "success" && productosData.data) {
-      valorTotalInventario = productosData.data.reduce(
-        (sum, p) => sum + Number(p.stock || 0) * Number(p.precio_compra || 0),
-        0,
-      );
+      valorTotalInventario = productosData.data.reduce((sum, p) => {
+        const precioBotella = parseFloat(p.precio_botella) || 0;
+        const contenidoOz = parseFloat(p.contenido_oz) || 1;
+        const stockOz = parseFloat(p.stock) || 0;
+        return sum + (stockOz * precioBotella / contenidoOz);
+      }, 0);
     }
 
     let totalIngresosCaja = 0;
@@ -1131,7 +1119,9 @@ async function calcularResumenFinanciero(fechaInicio = null, fechaFin = null) {
     ) {
       const costosMap = {};
       productosData.data.forEach((p) => {
-        costosMap[p.id] = parseFloat(p.precio_compra) || 0;
+        const precioBotella = parseFloat(p.precio_botella) || 0;
+        const contenidoOz = parseFloat(p.contenido_oz) || 1;
+        costosMap[p.id] = precioBotella / contenidoOz;
       });
 
       const ventasFiltradasIds = new Set();
@@ -1297,12 +1287,14 @@ async function renderChartsFromRawData() {
       productosData.data.forEach((p) => {
         // Por ID
         productosMap[p.id] = {
-          precio_compra: parseFloat(p.precio_compra) || 0,
+          precio_botella: parseFloat(p.precio_botella) || 0,
+          contenido_oz: parseFloat(p.contenido_oz) || 1,
         };
         // También por código si existe
         if (p.código) {
           productosMap[p.código] = {
-            precio_compra: parseFloat(p.precio_compra) || 0,
+            precio_botella: parseFloat(p.precio_botella) || 0,
+            contenido_oz: parseFloat(p.contenido_oz) || 1,
           };
         }
       });
@@ -1326,8 +1318,10 @@ async function renderChartsFromRawData() {
               }
 
               let costoUnitario = 0;
-              if (producto && producto.precio_compra) {
-                costoUnitario = parseFloat(producto.precio_compra) || 0;
+              if (producto && producto.precio_botella) {
+                const precioBotella = parseFloat(producto.precio_botella) || 0;
+                const contenidoOz = parseFloat(producto.contenido_oz) || 1;
+                costoUnitario = precioBotella / contenidoOz;
               }
 
               if (!costoUnitario) {
@@ -8782,33 +8776,19 @@ function agregarPersonalizadoACuenta() {
     }
   });
 
-  const cuenta = CuentasManager.getCuentaActiva();
-  if (!cuenta) {
-    alert(
-      "Abre una cuenta primero desde el Floor Plan o selecciona una cuenta activa",
-    );
-    return;
-  }
-
-  if (ingredientes.length === 0) {
-    alert("Agrega al menos un ingrediente");
-    return;
-  }
-
-  // Verificar si viene de una cuenta de mesa
-  const cuentaRecetaId = window._cuentaRecetaActual;
+  // Primero verificar si viene de la sección cuentas
+  const cuentaDestinoId = window._cuentaDestino;
   
-  if (cuentaRecetaId) {
-    // Agregar a la cuenta de la mesa
+  if (cuentaDestinoId) {
+    // Agregar a la cuenta específica de la sección cuentas
     let cuentas = CuentasManager.cuentasAbiertas || [];
-    let cuenta = cuentas.find(c => c.receta_id === cuentaRecetaId);
+    let cuenta = cuentas.find(c => c.id_cuenta === cuentaDestinoId);
     
     if (!cuenta) {
-      const nuevaCuenta = CuentasManager.crearCuenta({
-        nombre_mesa: "Receta " + cuentaRecetaId,
-        receta_id: cuentaRecetaId
-      });
-      cuenta = nuevaCuenta;
+      if (typeof showToast === "function") {
+        showToast("Cuenta no encontrada", "error");
+      }
+      return;
     }
     
     CuentasManager.agregarItem(cuenta.id_cuenta, {
@@ -8821,10 +8801,23 @@ function agregarPersonalizadoACuenta() {
       ingredientes: ingredientes,
     });
     
-    window._cuentaRecetaActual = null;
+    window._cuentaDestino = null;
     renderCuentasMesas();
   } else {
     // Agregar a la cuenta activa normal
+    const cuenta = CuentasManager.getCuentaActiva();
+    if (!cuenta) {
+      alert(
+        "Abre una cuenta primero desde el Floor Plan o selecciona una cuenta activa",
+      );
+      return;
+    }
+
+    if (ingredientes.length === 0) {
+      alert("Agrega al menos un ingrediente");
+      return;
+    }
+
     CuentasManager.agregarItem(cuenta.id_cuenta, {
       tipo: "personalizado",
       nombre: nombre,
@@ -9005,6 +8998,59 @@ function seleccionarCuenta(idCuenta) {
   actualizarSelectorCuentas();
 }
 
+// Abrir modal nueva cuenta
+function abrirModalNuevaCuenta() {
+  const modal = document.getElementById("modalNuevaCuenta");
+  if (modal) {
+    modal.style.display = "flex";
+    modal.classList.remove("hidden");
+    document.getElementById("nuevaCuentaNombre").value = "";
+    document.getElementById("nuevaCuentaDescripcion").value = "";
+    document.getElementById("nuevaCuentaNombre").focus();
+  }
+}
+
+function cerrarModalNuevaCuenta() {
+  const modal = document.getElementById("modalNuevaCuenta");
+  if (modal) {
+    modal.style.display = "none";
+    modal.classList.add("hidden");
+  }
+}
+
+function crearNuevaCuenta() {
+  const nombre = document.getElementById("nuevaCuentaNombre").value.trim();
+  const descripcion = document.getElementById("nuevaCuentaDescripcion").value.trim();
+
+  if (!nombre) {
+    if (typeof showToast === "function") {
+      showToast("Ingresa un nombre para la cuenta", "error");
+    } else {
+      alert("Ingresa un nombre para la cuenta");
+    }
+    return;
+  }
+
+  if (typeof CuentasManager !== "undefined") {
+    const nuevaCuenta = CuentasManager.abrirCuenta({
+      nombre_mesa: nombre,
+      descripcion: descripcion
+    });
+
+    if (nuevaCuenta) {
+      cerrarModalNuevaCuenta();
+      renderCuentasMesas();
+      if (typeof showToast === "function") {
+        showToast("Cuenta abierta: " + nombre, "success");
+      }
+    } else {
+      if (typeof showToast === "function") {
+        showToast("Error al crear la cuenta", "error");
+      }
+    }
+  }
+}
+
 // Renderizar cuentas de mesas en sección cuentas
 function renderCuentasMesas() {
   const container = document.getElementById("mesasCuentasGrid");
@@ -9015,86 +9061,88 @@ function renderCuentasMesas() {
 
   const cuentas = typeof CuentasManager !== "undefined" ? CuentasManager.getCuentasAbiertas() : [];
   const recetas = typeof RecetasManager !== "undefined" ? RecetasManager.recetas || [] : [];
-  
-  console.log("[DEBUG] renderCuentasMesas - Recetas:", recetas.length, recetas);
-  console.log("[DEBUG] renderCuentasMesas - Cuentas:", cuentas.length, cuentas);
 
-  if (recetas.length === 0) {
-    container.innerHTML = '<div class="mesa-vacio">No hay recetas disponibles. Crea recetas primero en la sección Recetas.</div>';
+  console.log("[DEBUG] renderCuentasMesas - Cuentas:", cuentas.length);
+
+  if (cuentas.length === 0) {
+    container.innerHTML = `
+      <div class="mesa-vacio">
+        <i class="fas fa-receipt" style="font-size: 3rem; color: var(--hermit-text-secondary); margin-bottom: 1rem;"></i>
+        <p>No hay cuentas abiertas</p>
+        <button class="btn primary-btn" onclick="abrirModalNuevaCuenta()" style="margin-top: 1rem;">
+          <i class="fas fa-plus"></i> Abrir Cuenta
+        </button>
+      </div>
+    `;
+    actualizarResumenCuentas();
     return;
   }
 
-  // Agrupar recetas por categoría para mostrar en los botones
-  const recetasPorCategoria = {};
-  recetas.forEach(r => {
-    if (!recetasPorCategoria[r.categoria]) {
-      recetasPorCategoria[r.categoria] = [];
-    }
-    recetasPorCategoria[r.categoria].push(r);
-  });
-
   let html = "";
 
-  recetas.forEach(receta => {
-    // Buscar si hay una cuenta para esta receta
-    const cuenta = cuentas.find(c => c.receta_id === receta.id_receta);
-    const tieneItems = cuenta && cuenta.items && cuenta.items.length > 0;
-    const total = cuenta ? cuenta.total : 0;
+  cuentas.forEach(cuenta => {
+    const tieneItems = cuenta.items && cuenta.items.length > 0;
+    const total = cuenta.total || 0;
+    const cuentaId = cuenta.id_cuenta;
 
     html += `
-      <div class="mesa-cuenta-card" data-receta-id="${receta.id_receta}">
-        <div class="mesa-cuenta-header" onclick="toggleMesaCuenta('${receta.id_receta}')">
+      <div class="mesa-cuenta-card" data-cuenta-id="${cuentaId}">
+        <div class="mesa-cuenta-header" onclick="toggleCuenta('${cuentaId}')">
           <div class="mesa-info">
-            <div class="mesa-icon">${receta.nombre.charAt(0)}</div>
+            <div class="mesa-icon">${(cuenta.nombre_mesa || "Cuenta").charAt(0)}</div>
             <div>
-              <div class="mesa-nombre">${receta.nombre}</div>
+              <div class="mesa-nombre">${cuenta.nombre_mesa || "Cuenta"}</div>
               <div class="mesa-estado ${tieneItems ? 'ocupada' : 'disponible'}">
-                ${tieneItems ? `${cuenta.items.length} items` : 'Disponible'}
+                ${tieneItems ? `${cuenta.items.length} items` : 'Vacía'}
               </div>
             </div>
           </div>
-          <div class="mesa-total">${tieneItems ? '$' + total.toFixed(2) : '$0.00'}</div>
+          <div class="mesa-total">$${total.toFixed(2)}</div>
         </div>
-        <div class="mesa-cuenta-content" id="mesa-content-${receta.id_receta}">
+        <div class="mesa-cuenta-content" id="cuenta-content-${cuentaId}">
           ${tieneItems ? `
-            <div class="mesa-cuenta-items" id="mesa-items-${receta.id_receta}">
-              ${cuenta.items.map((item, idx) => `
+            <div class="mesa-cuenta-items" id="cuenta-items-${cuentaId}">
+              ${cuenta.items.map((item) => `
                 <div class="mesa-item-row">
                   <div class="mesa-item-info">
                     <span class="mesa-item-nombre">${item.nombre}</span>
-                    <span class="mesa-item-cantidad">${item.cantidad} x $${item.precio_unitario.toFixed(2)}</span>
+                    <span class="mesa-item-cantidad">${item.cantidad} x $${(item.precio_unitario || 0).toFixed(2)}</span>
+                    ${item.notas ? `<span class="mesa-item-notas">📝 ${item.notas}</span>` : ''}
                   </div>
                   <div style="display: flex; align-items: center; gap: 0.5rem;">
-                    <span class="mesa-item-precio">$${item.subtotal.toFixed(2)}</span>
-                    <button class="mesa-item-eliminar" onclick="eliminarItemMesa('${cuenta.id_cuenta}', '${item.id}', '${receta.id_receta}')">&times;</button>
+                    <span class="mesa-item-precio">$${(item.subtotal || 0).toFixed(2)}</span>
+                    <button class="mesa-item-eliminar" onclick="eliminarItemCuenta('${cuentaId}', '${item.id}')">&times;</button>
                   </div>
                 </div>
               `).join('')}
             </div>
-          ` : '<div class="mesa-vacio">Sin productos</div>'}
-          
-          <div class="mesa-agregar-productos">
-            <div class="mesa-productos-grid">
-              ${recetas.map(r => `
-                <button class="btn btn-secondary mesa-producto-btn" onclick="agregarRecetaAMesa('${receta.id_receta}', '${r.id_receta}', ${r.precio_venta})">
-                  <span class="nombre">${r.nombre}</span>
-                  <span class="precio">$${r.precio_venta.toFixed(2)}</span>
-                </button>
-              `).join('')}
-            </div>
-            <button class="btn btn-secondary" onclick="abrirPersonalizadoParaMesa('${receta.id_receta}')">
-              <i class="fas fa-flask"></i> Personalizado
-            </button>
-          </div>
-          
-          <div class="mesa-cuenta-footer">
+` : '<div class="mesa-vacio">Sin productos</div>'}
+           
+           <div class="mesa-agregar-productos">
+             <button class="btn btn-secondary" onclick="toggleProductosLista('${cuentaId}')" id="btn-productos-${cuentaId}">
+               <i class="fas fa-plus"></i> Agregar Producto
+             </button>
+             <div class="mesa-productos-grid hidden" id="productos-lista-${cuentaId}">
+               ${recetas.length > 0 ? recetas.map(r => `
+                 <button class="btn btn-secondary mesa-producto-btn" onclick="agregarItemACuenta('${cuentaId}', '${r.id_receta}', '${r.nombre}', ${r.precio_venta})">
+                   <span class="nombre">${r.nombre}</span>
+                   <span class="precio">$${(r.precio_venta || 0).toFixed(2)}</span>
+                 </button>
+               `).join('') : '<div style="grid-column: 1 / -1; text-align: center; color: var(--hermit-text-secondary); font-size: 0.85rem; padding: 1rem;">Crea recetas primero en la sección Recetas</div>'}
+             </div>
+             <button class="btn btn-secondary btn-personalizado-mesa" onclick="abrirPersonalizadoParaCuenta('${cuentaId}')">
+               <i class="fas fa-flask"></i> Cóctel Personalizado
+             </button>
+           </div>
+           
+           <div class="mesa-cuenta-footer">
             <div class="mesa-subtotal">
-              Total: <span>$${(cuenta ? cuenta.total : 0).toFixed(2)}</span>
+              Total: <span>$${total.toFixed(2)}</span>
             </div>
             <button class="btn primary-btn mesa-pagar-btn" 
-              onclick="pagarCuentaMesa('${receta.id_receta}')"
+              onclick="pagarCuenta('${cuentaId}')"
               ${!tieneItems ? 'disabled' : ''}>
-              ${tieneItems ? 'Pagar' : 'Pagar'}
+              <i class="fas fa-credit-card"></i> Pagar
             </button>
           </div>
         </div>
@@ -9106,18 +9154,27 @@ function renderCuentasMesas() {
   actualizarResumenCuentas();
 }
 
-function toggleMesaCuenta(recetaId) {
-  const content = document.getElementById(`mesa-content-${recetaId}`);
+function toggleCuenta(cuentaId) {
+  const content = document.getElementById(`cuenta-content-${cuentaId}`);
   if (content) {
     content.classList.toggle('active');
   }
 }
 
-function agregarRecetaAMesa(cuentaRecetaId, recetaId, precio) {
-  // Buscar o crear cuenta para esta mesa
-  let cuentas = typeof CuentasManager !== "undefined" ? CuentasManager.cuentasAbiertas : [];
-  let cuenta = cuentas.find(c => c.receta_id === cuentaRecetaId);
-  
+function toggleProductosLista(cuentaId) {
+  const lista = document.getElementById(`productos-lista-${cuentaId}`);
+  const btn = document.getElementById(`btn-productos-${cuentaId}`);
+  if (lista) {
+    lista.classList.toggle('hidden');
+    if (lista.classList.contains('hidden')) {
+      btn.innerHTML = '<i class="fas fa-plus"></i> Agregar Producto';
+    } else {
+      btn.innerHTML = '<i class="fas fa-times"></i> Cancelar';
+    }
+  }
+}
+
+function agregarItemACuenta(cuentaId, recetaId, nombre, precio) {
   if (typeof CuentasManager === "undefined") {
     if (typeof showToast === "function") {
       showToast("CuentasManager no disponible", "error");
@@ -9125,53 +9182,54 @@ function agregarRecetaAMesa(cuentaRecetaId, recetaId, precio) {
     return;
   }
 
+  const cuenta = CuentasManager.cuentasAbiertas.find(c => c.id_cuenta === cuentaId);
   if (!cuenta) {
-    // Crear nueva cuenta para esta mesa
-    const nuevaCuenta = CuentasManager.crearCuenta({
-      nombre_mesa: "Receta " + cuentaRecetaId,
-      receta_id: cuentaRecetaId
-    });
-    cuenta = nuevaCuenta;
+    if (typeof showToast === "function") {
+      showToast("Cuenta no encontrada", "error");
+    }
+    return;
   }
 
-  // Agregar el item
-  CuentasManager.agregarItem(cuenta.id_cuenta, {
+  const receta = typeof RecetasManager !== "undefined" ? RecetasManager.recetas.find(r => r.id_receta === recetaId) : null;
+  const ingredientes = receta ? (typeof receta.ingredientes === "string" ? JSON.parse(receta.ingredientes) : receta.ingredientes || []) : [];
+
+  CuentasManager.agregarItem(cuentaId, {
     tipo: "receta",
     receta_id: recetaId,
-    nombre: "Receta",
+    nombre: nombre,
     cantidad: 1,
     cantidad_oz: 0,
     precio_unitario: precio,
-    ingredientes: []
+    ingredientes: ingredientes
   });
 
-  // Renderizar de nuevo
   renderCuentasMesas();
   
   if (typeof showToast === "function") {
-    showToast("Producto agregado", "success");
+    showToast(nombre + " agregado", "success");
   }
 }
 
-function eliminarItemMesa(idCuenta, itemId, recetaId) {
+function eliminarItemCuenta(cuentaId, itemId) {
   if (typeof CuentasManager !== "undefined") {
-    CuentasManager.removerItem(idCuenta, itemId);
+    CuentasManager.removerItem(cuentaId, itemId);
     renderCuentasMesas();
+    if (typeof showToast === "function") {
+      showToast("Producto eliminado", "info");
+    }
   }
 }
 
-function abrirPersonalizadoParaMesa(cuentaRecetaId) {
-  // Abrir el modal de personalizado
+function abrirPersonalizadoParaCuenta(cuentaId) {
+  window._cuentaDestino = cuentaId;
   if (typeof abrirCocktailPersonalizado === "function") {
-    // Guardar la cuenta destino para el personalizado
-    window._cuentaRecetaActual = cuentaRecetaId;
     abrirCocktailPersonalizado();
   }
 }
 
-async function pagarCuentaMesa(cuentaRecetaId) {
+async function pagarCuenta(cuentaId) {
   const cuentas = typeof CuentasManager !== "undefined" ? CuentasManager.cuentasAbiertas : [];
-  const cuenta = cuentas.find(c => c.receta_id === cuentaRecetaId);
+  const cuenta = cuentas.find(c => c.id_cuenta === cuentaId);
   
   if (!cuenta || !cuenta.items || cuenta.items.length === 0) {
     if (typeof showToast === "function") {
@@ -9180,18 +9238,18 @@ async function pagarCuentaMesa(cuentaRecetaId) {
     return;
   }
 
-  const btn = document.querySelector(`.mesa-cuenta-card[data-receta-id="${cuentaRecetaId}"] .mesa-pagar-btn`);
-  const originalText = btn ? btn.textContent : "Pagar";
+  const btn = document.querySelector(`.mesa-cuenta-card[data-cuenta-id="${cuentaId}"] .mesa-pagar-btn`);
+  const originalText = btn ? btn.innerHTML : "Pagar";
   
   if (btn) {
-    btn.textContent = "Procesando...";
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
     btn.disabled = true;
   }
 
   try {
     const result = await callGoogleScript("cerrarCuenta", {
       id_cuenta: cuenta.id_cuenta,
-      nombre_mesa: cuenta.nombre_mesa || "Mesa",
+      nombre_mesa: cuenta.nombre_mesa || "Cuenta",
       forma_pago: "efectivo",
       monto_recibido: cuenta.total,
       cambio: 0,
@@ -9203,7 +9261,7 @@ async function pagarCuentaMesa(cuentaRecetaId) {
     if (result.status === "success") {
       // Eliminar la cuenta local
       if (typeof CuentasManager !== "undefined") {
-        const idx = CuentasManager.cuentasAbiertas.findIndex(c => c.id_cuenta === cuenta.id_cuenta);
+        const idx = CuentasManager.cuentasAbiertas.findIndex(c => c.id_cuenta === cuentaId);
         if (idx !== -1) {
           CuentasManager.cuentasAbiertas.splice(idx, 1);
           CuentasManager.guardarEnLocalStorage();
@@ -9226,7 +9284,7 @@ async function pagarCuentaMesa(cuentaRecetaId) {
     }
   } finally {
     if (btn) {
-      btn.textContent = originalText;
+      btn.innerHTML = originalText;
       btn.disabled = false;
     }
   }

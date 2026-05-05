@@ -20,25 +20,7 @@ async init() {
     console.log("[DEBUG] RecetasManager.init() completado");
   },
 
-  async cargarRecetas() {
-    console.log("[DEBUG] cargarRecetas() llamado");
-    try {
-      const result = await callGoogleScript("obtenerRecetas", {});
-      console.log("[DEBUG] obtenerRecetas response:", result);
-      if (result.status === "success") {
-        this.recetas = result.data || [];
-        console.log("[DEBUG] recetas asignadas:", this.recetas.length);
-      } else {
-        console.error("[DEBUG] obtenerRecetas error:", result.message);
-        this.recetas = [];
-      }
-    } catch (e) {
-      console.error("Error cargando recetas:", e);
-      this.recetas = [];
-    }
-  },
-
-  renderCategorias() {
+renderCategorias() {
     const container = document.getElementById("categoryTabs");
     if (!container) return;
     
@@ -61,13 +43,19 @@ async init() {
   },
 
   async cargarRecetas() {
+    console.log("[DEBUG] cargarRecetas() llamado - llamando backend...");
     try {
       const result = await callGoogleScript("obtenerRecetas", {});
+      console.log("[DEBUG] obtenerRecetas response:", JSON.stringify(result));
       if (result.status === "success") {
         this.recetas = result.data || [];
+        console.log("[DEBUG] recetas asignadas:", this.recetas.length);
+      } else {
+        console.error("[DEBUG] obtenerRecetas error:", result.message);
+        this.recetas = [];
       }
     } catch (e) {
-      console.error("Error cargando recetas:", e);
+      console.error("[DEBUG] Error cargando recetas:", e);
       this.recetas = [];
     }
   },
