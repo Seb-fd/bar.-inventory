@@ -546,6 +546,8 @@ function doPost(e) {
       result = obtenerProductos();
     } else if (action === "obtenerCuentas") {
       result = obtenerCuentas(requestData.estado);
+    } else if (action === "obtenerResumenDia") {
+      result = obtenerResumenDia();
     } else if (action === "obtenerZonas") {
       result = obtenerZonas();
     } else if (action === "obtenerMesas") {
@@ -2323,6 +2325,63 @@ function obtenerCuentas(estado) {
       cuentas = cuentas.filter((c) => c.estado === estado);
     }
     return { status: "success", data: cuentas };
+  } catch (e) {
+    return { status: "error", message: e.message };
+  }
+}
+
+function obtenerResumenDia() {
+  try {
+    const ss = getSpreadsheet();
+    let sheet = ss.getSheetByName(HOJA_VENTAS);
+    if (!sheet) {
+      return { status: "success", data: { totalVentas: 0, totalCuentas: 0, ticketPromedio: 0 } };
+    }
+    
+    const data = sheet.getDataRange().getValues();
+    if (data.length <= 1) {
+      return { status: "success", data: { totalVentas: 0, totalCuentas: 0, ticketPromedio: 0 } };
+    }
+    
+    const headers = data[0];
+    const fechaIndex = headers.indexOf("fecha");
+    const totalIndex = headers.indexOf("total_final");
+    const ingresoIndex = headers.indexOf("ingresado");
+    
+    if (fechaIndex === -1 || totalIndex === -1) {
+      return { status: "success", data: { totalVentas: 0, totalCuentas: 0, ticketPromedio: 0 } };
+    }
+    
+    const hoy = new Date();
+    const hoyStr = hoy.toISOString().split("T")[0];
+    
+    let totalVentas = 0;
+    let totalCuentas = 0;
+    
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      const fecha = row[fechaIndex];
+      const total = parseFloat(row[totalIndex]) || 0;
+      const ingestado = ingresoIndex !== -1 ? String(row[ingresadoIndex]).toUpperCase() : "TRUE";
+      
+      if (!fecha) continue;
+      
+      const fechaStr = new Date(fecha).toISOString().split("T")[0];
+      
+      if (fechaStr === hoyStr && ingestado !== "FALSE") {
+        totalVentas += total;
+        totalCuentas++;
+      }
+    }
+    
+    return {
+      status: "success",
+      data: {
+        totalVentas,
+        totalCuentas,
+        ticketPromedio: totalCuentas > 0 ? totalVentas / totalCuentas : 0
+      }
+    };
   } catch (e) {
     return { status: "error", message: e.message };
   }

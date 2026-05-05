@@ -347,8 +347,30 @@ const CuentasManager = {
     }));
   },
 
-  obtenerResumenDia() {
+  async obtenerResumenDia() {
     const hoy = new Date().toISOString().split("T")[0];
+    
+    try {
+      const result = await callGoogleScript("obtenerCuentas", { estado: "cerrada" });
+      
+      if (result.status === "success" && result.data) {
+        const cuentasCerradas = result.data.filter(c => {
+          const fecha = c.inicio || "";
+          return fecha.startsWith(hoy);
+        });
+        
+        const totalVentas = cuentasCerradas.reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0);
+        
+        return {
+          totalVentas,
+          totalCuentas: cuentasCerradas.length,
+          ticketPromedio: cuentasCerradas.length > 0 ? totalVentas / cuentasCerradas.length : 0
+        };
+      }
+    } catch (e) {
+      console.log("Error obteniendo resumen del backend:", e.message);
+    }
+    
     const cuentasCerradas = this.cuentasAbiertas.filter(c => 
       c.estado === "cerrada" && c.cierre && c.cierre.startsWith(hoy)
     );
@@ -392,6 +414,156 @@ async function descontarInventarioPorVenta(items) {
     throw e;
   }
 }
+
+const cuentasRefresh = {
+  _updating: false,
+  
+  _formatCOP(value) {
+    const num = parseFloat(value) || 0;
+    return num.toLocaleString("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).replace("COP", "");
+  },
+  
+  async sync() {
+    if (typeof CuentasManager === "undefined") return;
+    if (this._updating) return;
+    this._updating = true;
+    
+    try {
+      await CuentasManager.restaurarCuentasDesdeBackend();
+    } finally {
+      this._updating = false;
+    }
+  },
+  
+  renderUI() {
+    if (typeof CuentasManager === "undefined") return;
+    
+    const container1 = document.getElementById("listaCuentasAbiertas");
+    const container2 = document.getElementById("mesasCuentasGrid");
+    const select = document.getElementById("selectorCuenta");
+    
+    if (container1 || container2 || select) {
+      this._renderCuentas();
+    }
+    
+    if (select) {
+      this._renderSelector();
+    }
+    
+    this._renderPanel();
+  },
+  
+  async stats() {
+    if (typeof CuentasManager === "undefined") {
+      this._updateStatsElements(0, 0, 0);
+      return;
+    }
+    
+    try {
+      const resumen = await CuentasManager.obtenerResumenDia();
+      this._updateStatsElements(resumen.totalVentas, resumen.totalCuentas, resumen.ticketPromedio);
+    } catch (e) {
+      console.log("Error actualizando stats:", e);
+      this._updateStatsElements(0, 0, 0);
+    }
+  },
+  
+  async all() {
+    await this.sync();
+    this.renderUI();
+    await this.stats();
+  },
+  
+  _renderCuentas() {
+    const container = document.getElementById("listaCuentasAbiertas");
+    if (!container) return;
+    
+    const cuentas = typeof CuentasManager !== "undefined" ? CuentasManager.getCuentasAbiertas() : [];
+    
+    if (cuentas.length === 0) {
+      container.innerHTML = '<div class="cuenta-vacio">No hay cuentas abiertas</div>';
+      return;
+    }
+    
+    let html = "";
+    cuentas.forEach(cuenta => {
+      const tiempo = new Date(cuenta.inicio).toLocaleTimeString();
+      html += `
+        <div class="cuenta-abierta-item" onclick="seleccionarCuenta('${cuenta.id_cuenta}')">
+          <div class="mesa-nombre">${cuenta.nombre_mesa || "Mesa"}</div>
+          <div class="cuenta-info">
+            <span>${cuenta.items.length} items</span>
+            <span>${tiempo}</span>
+            <span style="color: var(--hermit-accent); font-weight: bold;">${this._formatCOP(cuenta.total || 0)}</span>
+          </div>
+        </div>
+      `;
+    });
+    container.innerHTML = html;
+  },
+  
+  _renderSelector() {
+    const select = document.getElementById("selectorCuenta");
+    if (!select) return;
+    
+    const cuentas = typeof CuentasManager !== "undefined" ? CuentasManager.getCuentasAbiertas() : [];
+    
+    let html = '<option value="">Seleccionar...</option>';
+    cuentas.forEach(c => {
+      html += `<option value="${c.id_cuenta}" ${CuentasManager.cuentaActiva === c.id_cuenta ? "selected" : ""}>
+        ${c.nombre_mesa || "Mesa"} - $${this._formatCOP(c.total || 0)}
+      </option>`;
+    });
+    select.innerHTML = html;
+  },
+  
+  _renderPanel() {
+    const itemsContainer = document.getElementById("cuentaItems");
+    const subtotalEl = document.getElementById("cuentaSubtotal");
+    const totalEl = document.getElementById("cuentaActivaTotal");
+    
+    if (!itemsContainer && !subtotalEl && !totalEl) return;
+    
+    const cuenta = typeof CuentasManager !== "undefined" ? CuentasManager.getCuentaActiva() : null;
+    
+    if (!cuenta || !cuenta.items || cuenta.items.length === 0) {
+      if (itemsContainer) itemsContainer.innerHTML = '<div class="cuenta-vacio">Sin items</div>';
+      if (subtotalEl) subtotalEl.textContent = "$0";
+      if (totalEl) totalEl.textContent = "$0";
+      return;
+    }
+    
+    if (itemsContainer) {
+      itemsContainer.innerHTML = cuenta.items.map(item => `
+        <div class="cuenta-item-row">
+          <div class="cuenta-item-info">
+            <span>${item.cantidad}x ${item.nombre}</span>
+            <span class="cuenta-item-notas">${item.notas || ""}</span>
+          </div>
+          <span>${this._formatCOP(item.subtotal || 0)}</span>
+        </div>
+      `).join("");
+    }
+    
+    if (subtotalEl) subtotalEl.textContent = "$" + this._formatCOP(cuenta.subtotal || 0);
+    if (totalEl) totalEl.textContent = "$" + this._formatCOP(cuenta.total || 0);
+  },
+  
+  _updateStatsElements(ventas, cuentas, ticket) {
+    const map = {
+      "ventasDia": "$" + this._formatCOP(ventas),
+      "cuentasPagadas": cuentas,
+      "ticketPromedio": "$" + formatearCOP(ticket),
+      "kpiVentas": "$" + this._formatCOP(ventas),
+      "kpiTicket": "$" + formatearCOP(ticket)
+    };
+    
+    Object.entries(map).forEach(([id, value]) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = value;
+    });
+  }
+};
 
 document.addEventListener("DOMContentLoaded", () => {
   if (!CuentasManager._initialized) {

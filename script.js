@@ -9298,16 +9298,15 @@ function renderCuentasAbiertas() {
   });
   container.innerHTML = html;
 
-  // Actualizar resumen
-  const resumen =
-    typeof CuentasManager !== "undefined"
-      ? CuentasManager.obtenerResumenDia()
-      : { totalVentas: 0, totalCuentas: 0, ticketPromedio: 0 };
-  document.getElementById("cuentasPagadas").textContent = resumen.totalCuentas;
-  document.getElementById("ventasDia").textContent =
-    "$" + formatearCOP(resumen.totalVentas);
-  document.getElementById("ticketPromedio").textContent =
-    "$" + formatearCOP(resumen.ticketPromedio);
+  // Actualizar resumen (async)
+  if (typeof CuentasManager !== "undefined") {
+    CuentasManager.obtenerResumenDia().then(resumen => {
+      _actualizarStatsKPIs(resumen.totalVentas, resumen.totalCuentas, resumen.ticketPromedio);
+    }).catch(err => {
+      console.log("Error actualizando resumen:", err);
+      _actualizarStatsKPIs(0, 0, 0);
+    });
+  }
 }
 
 function seleccionarCuenta(idCuenta) {
@@ -9664,68 +9663,89 @@ async function pagarCuenta(cuentaId) {
   abrirModalPagoCuenta(cuentaId);
 }
 
-function actualizarResumenCuentas() {
-  const resumen =
-    typeof CuentasManager !== "undefined"
-      ? CuentasManager.obtenerResumenDia()
-      : { totalVentas: 0, totalCuentas: 0, ticketPromedio: 0 };
-  document.getElementById("cuentasPagadas").textContent = resumen.totalCuentas;
-  document.getElementById("ventasDia").textContent =
-    "$" + formatearCOP(resumen.totalVentas);
-  document.getElementById("ticketPromedio").textContent =
-    "$" + formatearCOP(resumen.ticketPromedio);
+function _actualizarStatsKPIs(ventas, cuentas, ticket) {
+  const map = {
+    "ventasDia": "$" + formatearCOP(ventas),
+    "cuentasPagadas": cuentas,
+    "ticketPromedio": "$" + formatearCOP(ticket),
+    "kpiVentas": "$" + formatearCOP(ventas),
+    "kpiTicket": "$" + formatearCOP(ticket)
+  };
+  
+  Object.entries(map).forEach(([id, value]) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+  });
+}
+
+async function actualizarResumenCuentas() {
+  if (typeof CuentasManager !== "undefined") {
+    try {
+      const resumen = await CuentasManager.obtenerResumenDia();
+      _actualizarStatsKPIs(resumen.totalVentas, resumen.totalCuentas, resumen.ticketPromedio);
+    } catch (err) {
+      console.log("Error actualizando resumen:", err);
+      _actualizarStatsKPIs(0, 0, 0);
+    }
+  }
 }
 
 // Dashboard Bar
-function actualizarDashboardBar() {
-  const cuentas =
-    typeof CuentasManager !== "undefined"
-      ? CuentasManager.obtenerResumenDia()
-      : { totalVentas: 0, totalCuentas: 0, ticketPromedio: 0 };
-
-  document.getElementById("kpiVentas").textContent =
-    "$" + formatearCOP(cuentas.totalVentas);
-  document.getElementById("kpiTicket").textContent =
-    "$" + formatearCOP(cuentas.ticketPromedio);
-
-  // Porcentaje ocupación
-  const mesas =
-    typeof FloorPlanManager !== "undefined" ? FloorPlanManager.mesas || [] : [];
-  const ocupadas = mesas.filter((m) => m.estado === "ocupada").length;
-  const ocupacion =
-    mesas.length > 0 ? Math.round((ocupadas / mesas.length) * 100) : 0;
-  document.getElementById("kpiOcupacion").textContent = ocupacion + "%";
-
-  // Pour cost: (Costo ingredientes vendidos / Ventas totales) * 100
-  let pourCost = 0;
-  if (cuentas.totalVentas > 0 && typeof RecetasManager !== "undefined") {
-    const recetas = RecetasManager.recetas || [];
-    let costoTotal = 0;
-    const cuentasAbiertas =
-      typeof CuentasManager !== "undefined"
-        ? CuentasManager.getCuentasAbiertas()
-        : [];
-
-    cuentasAbiertas.forEach((c) => {
-      (c.items || []).forEach((item) => {
-        if (item.receta_id) {
-          const receta = recetas.find((r) => r.id_receta === item.receta_id);
-          if (receta) {
-            const costo = RecetasManager.calcularCostoReceta(receta) || 0;
-            costoTotal += costo * item.cantidad;
-          }
-        }
-      });
-    });
-
-    pourCost = Math.round((costoTotal / cuentas.totalVentas) * 100);
+async function actualizarDashboardBar() {
+  if (typeof CuentasManager !== "undefined") {
+    try {
+      const cuentas = await CuentasManager.obtenerResumenDia();
+      _actualizarStatsKPIs(cuentas.totalVentas, cuentas.totalCuentas, cuentas.ticketPromedio);
+    } catch (err) {
+      console.log("Error actualizando dashboard:", err);
+      _actualizarStatsKPIs(0, 0, 0);
+    }
   }
-  document.getElementById("kpiPourCost").textContent = pourCost + "%";
-
+  
+  // Porcentaje ocupación
+  const mesas = typeof FloorPlanManager !== "undefined" ? FloorPlanManager.mesas || [] : [];
+  const ocupadas = mesas.filter((m) => m.estado === "ocupada").length;
+  const ocupacion = mesas.length > 0 ? Math.round((ocupadas / mesas.length) * 100) : 0;
+  const kpiOcupEl = document.getElementById("kpiOcupacion");
+  if (kpiOcupEl) kpiOcupEl.textContent = ocupacion + "%";
+  
+  // Pour cost
+  if (typeof CuentasManager !== "undefined" && typeof RecetasManager !== "undefined") {
+    let pourCost = 0;
+    try {
+      const resumen = await CuentasManager.obtenerResumenDia();
+      if (resumen.totalVentas > 0) {
+        const recetas = RecetasManager.recetas || [];
+        let costoTotal = 0;
+        const cuentasAbiertas = CuentasManager.getCuentasAbiertas();
+        
+        cuentasAbiertas.forEach((c) => {
+          (c.items || []).forEach((item) => {
+            if (item.receta_id) {
+              const receta = recetas.find((r) => r.id_receta === item.receta_id);
+              if (receta) {
+                const costo = RecetasManager.calcularCostoReceta(receta) || 0;
+                costoTotal += costo * item.cantidad;
+              }
+            }
+          });
+        });
+        
+        pourCost = Math.round((costoTotal / resumen.totalVentas) * 100);
+      }
+    } catch (e) {
+      console.log("Error calculando pour cost:", e);
+    }
+    const kpiPourEl = document.getElementById("kpiPourCost");
+    if (kpiPourEl) kpiPourEl.textContent = pourCost + "%";
+  }
+  
   // Inventario bajo
-  renderInventarioBajo();
-
-  // Cargar gráficos del dashboard
+  if (typeof renderInventarioBajo === "function") {
+    renderInventarioBajo();
+  }
+  
+  // Gráficos
   if (typeof cargarDatosGraficos === "function") {
     cargarDatosGraficos();
   }
@@ -9832,6 +9852,11 @@ async function eliminarReceta(id) {
 
 // Escuchar cambios en cuentas
 document.addEventListener("cuentasActualizadas", function (e) {
-  actualizarSelectorCuentas();
-  renderCuentasAbiertas();
+  if (typeof cuentasRefresh !== "undefined") {
+    cuentasRefresh.renderUI();
+  } else {
+    actualizarSelectorCuentas();
+    renderCuentasAbiertas();
+  }
+  actualizarResumenCuentas();
 });
