@@ -161,6 +161,10 @@ const VENTAS_DETALLE_HEADERS = [
 // HEADERS PARA EL BAR - THE HERMIT COCKTAIL BAR
 // ================================================================
 
+// ================================================================
+// HEADERS PARA EL BAR - THE HERMIT COCKTAIL BAR
+// ================================================================
+
 const PRODUCTOS_BAR_HEADERS = [
   "id",
   "nombre",
@@ -173,8 +177,6 @@ const PRODUCTOS_BAR_HEADERS = [
   "precio_ml",
   "precio_venta",
   "precio_venta_2",
-  "precio_venta_3",
-  "precio_venta_4",
   "stock",
   "fecha_creado",
 ];
@@ -726,16 +728,6 @@ function agregarProducto(data) {
       ? parseFloat(data.precio_venta_2)
       : precioVentaBase;
 
-  const precioVenta3 =
-    data.precio_venta_3 !== undefined && data.precio_venta_3 !== ""
-      ? parseFloat(data.precio_venta_3)
-      : precioVentaBase;
-
-  const precioVenta4 =
-    data.precio_venta_4 !== undefined && data.precio_venta_4 !== ""
-      ? parseFloat(data.precio_venta_4)
-      : precioVentaBase;
-
   const newRow = [
     newId,
     data.nombre,
@@ -748,9 +740,7 @@ function agregarProducto(data) {
     parseFloat(data.precio_ml) || 0,
     precioVentaBase,
     precioVenta2,
-    precioVenta3,
-    precioVenta4,
-    parseInt(data.stock) || 0,
+    parseFloat(data.stock) || 0,
     new Date(),
   ];
 
@@ -2196,23 +2186,38 @@ function calcularCostoReceta(ingredientes) {
     const dataProductos = sheetProductos.getDataRange().getValues();
     const headers = dataProductos[0];
     const idCol = headers.indexOf("id");
+    const nombreCol = headers.indexOf("nombre");
     const precioBotellaCol = headers.indexOf("precio_botella");
     const contenidoOzCol = headers.indexOf("contenido_oz");
     if (idCol === -1 || precioBotellaCol === -1 || contenidoOzCol === -1) return 0;
 
     const productoMap = {};
+    const productoPorNombre = {};
     for (let i = 1; i < dataProductos.length; i++) {
       const pid = String(dataProductos[i][idCol]);
+      const nombre = String(dataProductos[i][nombreCol] || "").toLowerCase().trim();
       const precioBotella = parseFloat(dataProductos[i][precioBotellaCol]) || 0;
       const contenidoOz = parseFloat(dataProductos[i][contenidoOzCol]) || 0;
       if (precioBotella > 0 && contenidoOz > 0) {
         productoMap[pid] = precioBotella / contenidoOz;
+        if (nombre) productoPorNombre[nombre] = precioBotella / contenidoOz;
       }
     }
 
     let costo = 0;
     ingredientes.forEach((ing) => {
-      const costoPorOz = productoMap[String(ing.producto_id)];
+      let costoPorOz = productoMap[String(ing.producto_id)];
+      
+      if (!costoPorOz && ing.nombre_producto) {
+        const nombreBusqueda = String(ing.nombre_producto).toLowerCase().trim();
+        costoPorOz = productoPorNombre[nombreBusqueda];
+      }
+      
+      if (!costoPorOz && ing.nombre) {
+        const nombreBusqueda = String(ing.nombre).toLowerCase().trim();
+        costoPorOz = productoPorNombre[nombreBusqueda];
+      }
+      
       if (costoPorOz) {
         costo += costoPorOz * (parseFloat(ing.cantidad_oz) || 0);
       }

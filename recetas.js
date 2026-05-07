@@ -82,6 +82,7 @@ renderCategorias() {
       const result = await callGoogleScript("obtenerProductos", {});
       if (result.status === "success") {
         this.productos = result.data || [];
+        this._actualizarDatalist();
       }
     } catch (e) {
       console.error("Error cargando productos:", e);
@@ -349,10 +350,19 @@ renderCategorias() {
     const container = document.getElementById("ingredientesEditor");
     if (!container) return;
     
+    if (!document.getElementById("ingredienteDatalist")) {
+      const datalist = document.createElement("datalist");
+      datalist.id = "ingredienteDatalist";
+      document.body.appendChild(datalist);
+    }
+    this._actualizarDatalist();
+    
     container.innerHTML = ingredientes.map((ing, i) => `
       <div class="ingrediente-row">
-        <input type="text" class="ingrediente-nombre" value="${ing.nombre_producto || ing.nombre || ""}" 
-          placeholder="Nombre del ingrediente" data-index="${i}">
+        <input type="text" class="ingrediente-nombre" 
+          value="${ing.nombre_producto || ing.nombre || ""}" 
+          placeholder="Buscar ingrediente..."
+          list="ingredienteDatalist" data-index="${i}" autocomplete="off">
         <input type="number" class="ingrediente-cantidad" value="${ing.cantidad_oz || ing.cantidad || ""}" 
           placeholder="oz" step="0.5" data-index="${i}">
         <button class="btn-eliminar-ingrediente" data-index="${i}">×</button>
@@ -360,6 +370,14 @@ renderCategorias() {
     `).join("");
     
     this._bindIngredientEventsOnce();
+  },
+  
+  _actualizarDatalist() {
+    const datalist = document.getElementById("ingredienteDatalist");
+    if (!datalist) return;
+    datalist.innerHTML = this.productos.map(p => 
+      `<option value="${p.nombre}" data-id="${p.id}">`
+    ).join("");
   },
 
   _bindIngredientEventsOnce() {
@@ -444,11 +462,13 @@ renderCategorias() {
     const ingredientes = [];
     
     rows.forEach((row, i) => {
-      const nombre = row.querySelector(".ingrediente-nombre").value;
+      const nombre = row.querySelector(".ingrediente-nombre").value.trim();
       const cantidad = parseFloat(row.querySelector(".ingrediente-cantidad").value) || 0;
       
       if (nombre && cantidad > 0) {
+        const producto = this.productos.find(p => p.nombre === nombre);
         ingredientes.push({
+          producto_id: producto ? producto.id : "",
           nombre_producto: nombre,
           cantidad_oz: cantidad
         });

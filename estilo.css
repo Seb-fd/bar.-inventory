@@ -3448,3 +3448,61 @@ body {
 .propina-botones .btn.primary-btn {
   background: var(--hermit-accent);
 }
+
+/* ==================== FORMULARIO NUEVO PRODUCTO ==================== */
+.calculated-field {
+  background: var(--gray-200) !important;
+  color: var(--text-secondary) !important;
+}
+
+.field-hint {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  margin-top: 2px;
+}
+
+.field-status {
+  display: block;
+  font-size: 0.75rem;
+  margin-top: 2px;
+  min-height: 1rem;
+}
+
+.field-status.success {
+  color: var(--success-color);
+}
+
+.field-status.error {
+  color: var(--danger-color);
+}
+
+.field-status.loading {
+  color: var(--text-muted);
+}
+
+.field-status.loading::before {
+  content: "";
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--text-muted);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Validación visual inline */
+input.invalid {
+  border-color: var(--danger-color) !important;
+}
+
+input.valid {
+  border-color: var(--success-color) !important;
+}

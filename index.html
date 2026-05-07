@@ -418,6 +418,9 @@
           <p>Lista de todos los productos y su stock disponible.</p>
 
           <div class="button-group">
+            <button id="btnAgregarProducto" class="btn primary-btn" onclick="abrirModalNuevoProducto()">
+              <i class="fas fa-plus"></i> Agregar Producto
+            </button>
             <button id="cargarInventarioBtn" class="btn secondary-btn">
               <i class="fas fa-sync"></i> Refrescar Inventario
             </button>
@@ -475,17 +478,16 @@
                     <th>Nombre</th>
                     <th>Código</th>
                     <th>Categoría</th>
-                    <th>Stock</th>
-                    <th>P. Compra</th>
+                    <th>Stock (ml)</th>
+                    <th>Precio Onza</th>
+                    <th>Precio Botella</th>
                     <th>P. Venta 1</th>
                     <th>P. Venta 2</th>
-                    <th>P. Venta 3</th>
-                    <th>P. Venta 4</th>
                   </tr>
                 </thead>
                 <tbody id="inventarioTableBody">
                   <tr>
-                    <td colspan="9">
+                    <td colspan="8">
                       Presiona "Refrescar Inventario" para cargar los datos.
                     </td>
                   </tr>
@@ -529,8 +531,8 @@
           </div>
         </section>
 
-        <!-- Sección 2: Registrar Producto -->
-        <section id="productos" class="content-section">
+        <!-- Sección 2: Registrar Producto (LEGACY - usar modal en Inventario) -->
+        <section id="productos" class="content-section" style="display: none;">
           <h2><i class="fas fa-box-open"></i> Registrar Nuevo Producto</h2>
           <p class="status-message info" style="display: block">
             El ID del producto se generará automáticamente.
@@ -551,63 +553,6 @@
                   Cargando categorías...
                 </option>
               </select>
-            </div>
-            <div class="form-group">
-              <label for="p_precio_compra">Precio Compra:</label>
-              <input
-                type="number"
-                id="p_precio_compra"
-                class="money-input"
-                step="1"
-                required
-                placeholder="0"
-                value="0"
-              />
-            </div>
-            <div class="form-group">
-              <label for="p_precio_venta">Precio Venta:</label>
-              <input
-                type="number"
-                id="p_precio_venta"
-                class="money-input"
-                step="1"
-                required
-                placeholder="0"
-                value="0"
-              />
-            </div>
-            <div class="form-group">
-              <label for="p_precio_venta_2">Precio Venta 2 (Promo):</label>
-              <input
-                type="number"
-                id="p_precio_venta_2"
-                class="money-input"
-                step="1"
-                placeholder="0"
-                value="0"
-              />
-            </div>
-            <div class="form-group">
-              <label for="p_precio_venta_3">Precio Venta 3 (Promo):</label>
-              <input
-                type="number"
-                id="p_precio_venta_3"
-                class="money-input"
-                step="1"
-                placeholder="0"
-                value="0"
-              />
-            </div>
-            <div class="form-group">
-              <label for="p_precio_venta_4">Precio Venta 4 (Promo):</label>
-              <input
-                type="number"
-                id="p_precio_venta_4"
-                class="money-input"
-                step="1"
-                placeholder="0"
-                value="0"
-              />
             </div>
             <div class="form-group">
               <label for="p_stock">Stock Inicial:</label>
@@ -2508,6 +2453,113 @@
         </div>
         <div id="inventarioDetalleContenido" style="padding: 20px">
           <!-- Se llena dinámicamente -->
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL NUEVO PRODUCTO -->
+    <div id="nuevoProductoModal" class="factura-overlay hidden">
+      <div class="factura-card" style="max-width: 600px">
+        <div class="factura-header">
+          <div style="width: 100px"></div>
+          <h3><i class="fas fa-plus-circle"></i> Nuevo Producto</h3>
+          <button
+            onclick="cerrarModalNuevoProducto()"
+            class="btn secondary-btn"
+            style="min-width: 100px"
+          >
+            Cerrar
+          </button>
+        </div>
+        <form id="nuevoProductoForm" style="padding: 20px">
+          <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 15px;">
+            <div class="form-group">
+              <label for="np_codigo">Código *</label>
+              <input type="text" id="np_codigo" required placeholder="Ej: VOD001" onblur="validarCodigoUnico(this.value)" />
+              <span class="field-status" id="np_codigo_status"></span>
+            </div>
+            <div class="form-group">
+              <label for="np_nombre">Nombre *</label>
+              <input type="text" id="np_nombre" required placeholder="Ej: Vodka Absolut" />
+            </div>
+            <div class="form-group">
+              <label for="np_categoria">Categoría *</label>
+              <div style="display: flex; gap: 8px;">
+                <select id="np_categoria" required style="flex: 1;">
+                  <option value="" disabled selected>Cargando...</option>
+                </select>
+                <button type="button" class="btn secondary-btn" onclick="mostrarModalNuevaCategoria()" title="Nueva categoría" style="padding: 6px 10px;">
+                  <i class="fas fa-plus"></i>
+                </button>
+              </div>
+              
+            </div>
+            <div class="form-group">
+              <label for="np_volumen_ml">Volumen (ml) *</label>
+              <input type="number" id="np_volumen_ml" required placeholder="Ej: 750" min="1" oninput="calcularPreciosDerivados()" />
+            </div>
+            <div class="form-group">
+              <label for="np_contenido_oz">Contenido (oz) *</label>
+              <input type="number" id="np_contenido_oz" required placeholder="Ej: 25.36" step="0.01" min="0.01" oninput="calcularPreciosDerivados()" />
+            </div>
+            <div class="form-group">
+              <label for="np_precio_botella">Precio Botella ($) *</label>
+              <input type="number" id="np_precio_botella" required placeholder="0" min="0" oninput="calcularPreciosDerivados()" />
+            </div>
+            <div class="form-group">
+              <label for="np_precio_onza">Precio Onza ($)</label>
+              <input type="number" id="np_precio_onza" readonly class="calculated-field" />
+              <small class="field-hint">Calculado automáticamente</small>
+            </div>
+            <div class="form-group">
+              <label for="np_precio_ml">Precio ml ($)</label>
+              <input type="number" id="np_precio_ml" readonly class="calculated-field" />
+              <small class="field-hint">Calculado automáticamente</small>
+            </div>
+            <div class="form-group">
+              <label for="np_precio_venta">Precio Venta 1 ($) *</label>
+              <input type="number" id="np_precio_venta" required placeholder="0" min="0" />
+            </div>
+            <div class="form-group">
+              <label for="np_precio_venta_2">Precio Venta 2 ($)</label>
+              <input type="number" id="np_precio_venta_2" placeholder="Precio promo (opcional)" min="0" />
+            </div>
+            <div class="form-group" style="grid-column: span 2;">
+              <label for="np_stock">Stock Inicial (ml) *</label>
+              <input type="number" id="np_stock" required placeholder="Ej: 750" min="0" />
+            </div>
+          </div>
+          <div id="np_error" class="status-message error hidden" style="margin-top: 15px;"></div>
+        </form>
+        <div class="factura-actions" style="padding: 0 20px 20px;">
+          <button type="button" class="btn secondary-btn" onclick="cerrarModalNuevoProducto()">
+            Cancelar
+          </button>
+          <button type="button" id="btnGuardarProducto" class="btn primary-btn" onclick="guardarNuevoProducto()">
+            <i class="fas fa-save"></i> Guardar Producto
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL NUEVA CATEGORÍA -->
+    <div id="nuevaCategoriaModal" class="factura-overlay hidden">
+      <div class="factura-card" style="max-width: 400px">
+        <div class="factura-header">
+          <div style="width: 50px"></div>
+          <h3><i class="fas fa-tag"></i> Nueva Categoría</h3>
+          <button onclick="cerrarModalNuevaCategoria()" class="btn secondary-btn" style="min-width: 80px">Cerrar</button>
+        </div>
+        <div style="padding: 20px;">
+          <div class="form-group">
+            <label for="nueva_cat_nombre">Nombre de la categoría</label>
+            <input type="text" id="nueva_cat_nombre" placeholder="Ej: Licores" required />
+          </div>
+          <div id="cat_error" class="status-message error hidden" style="margin-top: 10px;"></div>
+          <div style="display: flex; gap: 10px; margin-top: 15px;">
+            <button class="btn secondary-btn" onclick="cerrarModalNuevaCategoria()" style="flex: 1;">Cancelar</button>
+            <button class="btn primary-btn" onclick="crearNuevaCategoria()" style="flex: 1;">Crear</button>
+          </div>
         </div>
       </div>
     </div>

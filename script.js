@@ -1710,7 +1710,7 @@ async function renderNuevosGraficos(fechaInicio = null, fechaFin = null) {
     const inventarioCategoria = {};
     productos.forEach((p) => {
       const cat = p.categoría || "Sin Categoría";
-      const valor = (p.stock || 0) * (p.precio_compra || 0);
+      const valor = (p.stock || 0) * (p.precio_botella || 0);
       inventarioCategoria[cat] = (inventarioCategoria[cat] || 0) + valor;
     });
 
@@ -2103,7 +2103,7 @@ function updateProductDetails(product, detailDiv, prefix) {
 
   const isCompra = prefix === "co";
   const priceLabel = isCompra ? "Precio Compra Actual" : "Precio Venta Actual";
-  const basePrice = isCompra ? product.precio_compra : product.precio_venta;
+  const basePrice = isCompra ? product.precio_botella : product.precio_venta;
 
   const stockStyle =
     product.stock < 5
@@ -2133,8 +2133,6 @@ function updateProductDetails(product, detailDiv, prefix) {
     const prices = {
       precio_venta: product.precio_venta,
       precio_venta_2: product.precio_venta_2 || product.precio_venta,
-      precio_venta_3: product.precio_venta_3 || product.precio_venta,
-      precio_venta_4: product.precio_venta_4 || product.precio_venta,
     };
 
     priceSelect.onchange = () => {
@@ -2218,7 +2216,7 @@ async function handleTransactionPost(e, type) {
 async function loadInventario() {
   displayStatus("statusInventario", "info", "Cargando datos de inventario...");
   const tableBody = document.getElementById("inventarioTableBody");
-  tableBody.innerHTML = '<tr><td colspan="9">Cargando...</td></tr>';
+  tableBody.innerHTML = '<tr><td colspan="8">Cargando...</td></tr>';
 
   try {
     // Intentar cargar del servidor
@@ -2265,7 +2263,7 @@ async function loadInventario() {
       const mensaje = data?.message || "No hay productos en inventario.";
       displayStatus("statusInventario", "warning", mensaje);
       tableBody.innerHTML =
-        '<tr><td colspan="9">No hay productos en inventario.</td></tr>';
+        '<tr><td colspan="8">No hay productos en inventario.</td></tr>';
     }
   } catch (error) {
     console.debug("[INVENTARIO] Sin conexión, intentando localStorage...");
@@ -2310,7 +2308,7 @@ async function loadInventario() {
     "Sin conexión y sin inventario guardado",
   );
   tableBody.innerHTML =
-    '<tr><td colspan="9">Sin conexión y sin inventario guardado.</td></tr>';
+    '<tr><td colspan="8">Sin conexión y sin inventario guardado.</td></tr>';
 }
 
 function filtrarInventario() {
@@ -2324,7 +2322,7 @@ function filtrarInventario() {
 
   if (!inventarioCache || inventarioCache.length === 0) {
     tableBody.innerHTML =
-      '<tr><td colspan="9">No hay productos en inventario.</td></tr>';
+      '<tr><td colspan="8">No hay productos en inventario.</td></tr>';
     actualizarPaginacionInventario(0, 0, 0);
     return;
   }
@@ -2373,29 +2371,29 @@ function filtrarInventario() {
 
   tableBody.innerHTML =
     paginated.length === 0
-      ? '<tr><td colspan="9">No hay productos que coincidan con los filtros.</td></tr>'
+      ? '<tr><td colspan="8">No hay productos que coincidan con los filtros.</td></tr>'
       : paginated
           .map((p) => {
             const stockStyle =
               p.stock < 5
                 ? 'style="color: var(--danger-color); font-weight: bold;"'
                 : "";
+            const stockMl = Number(p.stock) || 0;
+            const contenidoOz = Number(p.contenido_oz) || 0;
+            const precioBotella = Number(p.precio_botella) || 0;
+            const precioOnza = contenidoOz > 0 ? precioBotella / contenidoOz : 0;
             const pv1 = Number(p.precio_venta) || 0;
             const pv2 = Number(p.precio_venta_2) || 0;
-            const pv3 = Number(p.precio_venta_3) || 0;
-            const pv4 = Number(p.precio_venta_4) || 0;
-            const pc = Number(p.precio_compra) || 0;
             return `
           <tr onclick="mostrarInventarioDetalle('${p.id}')" style="cursor: pointer;">
             <td>${p.nombre}</td>
             <td>${p.código}</td>
             <td>${p.categoría}</td>
-            <td ${stockStyle}>${p.stock}</td>
-            <td>$${formatearCOP(pc)}</td>
+            <td ${stockStyle}>${stockMl}</td>
+            <td>$${formatearCOP(precioOnza)}</td>
+            <td>$${formatearCOP(precioBotella)}</td>
             <td>$${formatearCOP(pv1)}</td>
             <td>$${formatearCOP(pv2)}</td>
-            <td>$${formatearCOP(pv3)}</td>
-            <td>$${formatearCOP(pv4)}</td>
           </tr>
         `;
           })
@@ -2999,7 +2997,7 @@ function coSeleccionarProducto(id) {
   if (!producto) return;
 
   // Agregar producto al carrito con cantidad 1 y precio de compra
-  const precioCompra = producto.precio_compra || producto.precio || 0;
+  const precioCompra = producto.precio_botella || producto.precio || 0;
 
   coVenta.items.push({
     producto_id: producto.id,
@@ -3472,8 +3470,6 @@ function posAgregarProducto(producto) {
   const precios = {
     precio_venta: Number(producto.precio_venta) || 0,
     precio_venta_2: Number(producto.precio_venta_2) || 0,
-    precio_venta_3: Number(producto.precio_venta_3) || 0,
-    precio_venta_4: Number(producto.precio_venta_4) || 0,
   };
 
   if (item) {
@@ -6360,12 +6356,10 @@ function mostrarInventarioDetalle(idProducto) {
 
   const pv1 = Number(producto.precio_venta) || 0;
   const pv2 = Number(producto.precio_venta_2) || 0;
-  const pv3 = Number(producto.precio_venta_3) || 0;
-  const pv4 = Number(producto.precio_venta_4) || 0;
-  const pc = Number(producto.precio_compra) || 0;
+  const precioBotella = Number(producto.precio_botella) || 0;
   const stock = Number(producto.stock) || 0;
-  const utilidad1 = pc > 0 ? pv1 - pc : 0;
-  const utilidad2 = pc > 0 ? pv2 - pc : 0;
+  const utilidad1 = precioBotella > 0 ? pv1 - precioBotella : 0;
+  const utilidad2 = precioBotella > 0 ? pv2 - precioBotella : 0;
 
   const contenido = document.getElementById("inventarioDetalleContenido");
   contenido.innerHTML = `
@@ -6391,27 +6385,21 @@ function mostrarInventarioDetalle(idProducto) {
         <i class="fas fa-dollar-sign"></i> Precios
       </h4>
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
-        <p>Precio Compra:</p>
-        <p><strong>$${formatearCOP(pc)}</strong></p>
+        <p>Precio Botella:</p>
+        <p><strong>$${formatearCOP(precioBotella)}</strong></p>
         
         <p>Precio Venta 1:</p>
         <p><strong>$${formatearCOP(pv1)}</strong> <span style="font-size: 0.85em; color: var(--success-color);">+$${formatearCOP(utilidad1)}</span></p>
         
         <p>Precio Venta 2:</p>
         <p><strong>$${formatearCOP(pv2)}</strong> <span style="font-size: 0.85em; color: var(--success-color);">+$${formatearCOP(utilidad2)}</span></p>
-        
-        <p>Precio Venta 3:</p>
-        <p><strong>$${formatearCOP(pv3)}</strong></p>
-        
-        <p>Precio Venta 4:</p>
-        <p><strong>$${formatearCOP(pv4)}</strong></p>
       </div>
     </div>
 
     <div style="margin-top: 20px; padding: 15px; background: var(--gray-50); border-radius: 8px; text-align: center;">
       <p style="margin: 0; color: var(--gray-600);">Margen de ganancia (Precio Venta 1)</p>
       <p style="margin: 5px 0 0 0; font-size: 1.5em; font-weight: bold; color: var(--success-color);">
-        ${pc > 0 ? (((pv1 - pc) / pc) * 100).toFixed(1) : 0}%
+        ${precioBotella > 0 ? (((pv1 - precioBotella) / precioBotella) * 100).toFixed(1) : 0}%
       </p>
     </div>
   `;
@@ -6930,7 +6918,7 @@ async function abrirGraficoDetalle(tipoGrafico) {
         productos.forEach((p) => {
           const c = p.categoría || "Sin Categoría";
           invCat[c] =
-            (invCat[c] || 0) + (p.stock || 0) * (p.precio_compra || 0);
+            (invCat[c] || 0) + (p.stock || 0) * (p.precio_botella || 0);
         });
 
         chartConfig = {
@@ -7217,7 +7205,7 @@ async function abrirDetalleGanancias() {
             const prod = productosMap[item.producto_id];
             if (prod) {
               costoTotal +=
-                (parseFloat(prod.precio_compra) || 0) * parseInt(item.cantidad);
+                (parseFloat(prod.precio_botella) || 0) * parseInt(item.cantidad);
             }
           });
           const ganancia =
@@ -7285,22 +7273,22 @@ async function abrirDetalleInventario() {
           nombre: p.nombre || "-",
           codigo: p.código || "-",
           stock: p.stock || 0,
-          precio_compra: `$${formatearCOP(p.precio_compra || 0)}`,
-          valor_total: `$${formatearCOP((p.stock || 0) * (p.precio_compra || 0))}`,
+          precio_botella: `$${formatearCOP(p.precio_botella || 0)}`,
+          valor_total: `$${formatearCOP((p.stock || 0) * (p.precio_botella || 0))}`,
         }))
         .sort(
           (a, b) =>
             parseInt(b.stock) *
-              parseFloat(a.precio_compra.replace(/[$,]/g, "")) -
+              parseFloat(a.precio_botella.replace(/[$,]/g, "")) -
             parseInt(a.stock) *
-              parseFloat(b.precio_compra.replace(/[$,]/g, "")),
+              parseFloat(b.precio_botella.replace(/[$,]/g, "")),
         );
 
       document.getElementById("detalleInventarioContenido").innerHTML =
         renderTablaDatos(
           productos,
-          ["nombre", "codigo", "stock", "precio_compra", "valor_total"],
-          ["Producto", "Código", "Stock", "Costo Unit.", "Valor Total"],
+          ["nombre", "codigo", "stock", "precio_botella", "valor_total"],
+          ["Producto", "Código", "Stock", "Precio Botella", "Valor Total"],
         );
     }
   } catch (e) {
@@ -7758,7 +7746,7 @@ async function abrirDetalleCostoVenta() {
             costos[item.producto_id] = {
               nombre: item.nombre_producto || "-",
               cantidad: 0,
-              costo_unitario: prod ? prod.precio_compra || 0 : 0,
+              costo_unitario: prod ? prod.precio_botella || 0 : 0,
               costo_total: 0,
             };
           }
@@ -9860,3 +9848,359 @@ document.addEventListener("cuentasActualizadas", function (e) {
   }
   actualizarResumenCuentas();
 });
+
+// ================================================================
+// GESTIÓN DE NUEVO PRODUCTO (desde modal Inventario)
+// ================================================================
+
+function abrirModalNuevoProducto() {
+  const modal = document.getElementById("nuevoProductoModal");
+  if (!modal) return;
+  
+  // Limpiar formulario
+  const form = document.getElementById("nuevoProductoForm");
+  if (form) form.reset();
+  
+  // Limpiar estados y errores
+  const errorDiv = document.getElementById("np_error");
+  if (errorDiv) {
+    errorDiv.classList.add("hidden");
+    errorDiv.textContent = "";
+  }
+  
+  // Limpiar validación visual
+  document.querySelectorAll("#nuevoProductoForm input").forEach(input => {
+    input.classList.remove("valid", "invalid");
+  });
+  document.querySelectorAll(".field-status").forEach(span => {
+    span.textContent = "";
+    span.className = "field-status";
+  });
+  
+  // Ocultar input de nueva categoría
+  const nuevaCatInput = document.getElementById("np_nueva_categoria");
+  if (nuevaCatInput) nuevaCatInput.classList.add("hidden");
+  
+  // Cargar categorías
+  cargarCategoriasEnSelect();
+  
+  // Resetear botón
+  const btnGuardar = document.getElementById("btnGuardarProducto");
+  if (btnGuardar) {
+    btnGuardar.disabled = false;
+    btnGuardar.innerHTML = '<i class="fas fa-save"></i> Guardar Producto';
+  }
+  
+  modal.classList.remove("hidden");
+}
+
+function cerrarModalNuevoProducto() {
+  const modal = document.getElementById("nuevoProductoModal");
+  if (modal) modal.classList.add("hidden");
+}
+
+async function cargarCategoriasEnSelect() {
+  const select = document.getElementById("np_categoria");
+  if (!select) return;
+  
+  try {
+    const data = await utils.fetchJson(`${SCRIPT_URL}?action=getCategorias`);
+    if (data.status === "success" && data.data) {
+      select.innerHTML = '<option value="" disabled selected>Seleccionar...</option>';
+      data.data.forEach(cat => {
+        const name = cat.nombre || `(ID ${cat.id})`;
+        select.innerHTML += `<option value="${name}">${name}</option>`;
+      });
+    } else {
+      select.innerHTML = '<option value="" disabled selected>Sin categorías</option>';
+    }
+  } catch (e) {
+    select.innerHTML = '<option value="" disabled selected>Error al cargar</option>';
+  }
+}
+
+function mostrarInputNuevaCategoria() {
+  mostrarModalNuevaCategoria();
+}
+
+function mostrarModalNuevaCategoria() {
+  const modal = document.getElementById("nuevaCategoriaModal");
+  if (modal) {
+    document.getElementById("nueva_cat_nombre").value = "";
+    const errorDiv = document.getElementById("cat_error");
+    if (errorDiv) {
+      errorDiv.classList.add("hidden");
+      errorDiv.textContent = "";
+    }
+    modal.classList.remove("hidden");
+  }
+}
+
+function cerrarModalNuevaCategoria() {
+  const modal = document.getElementById("nuevaCategoriaModal");
+  if (modal) modal.classList.add("hidden");
+}
+
+async function crearNuevaCategoria() {
+  const nombreInput = document.getElementById("nueva_cat_nombre");
+  const nombre = nombreInput?.value.trim();
+  const errorDiv = document.getElementById("cat_error");
+  
+  if (!nombre) {
+    if (errorDiv) {
+      errorDiv.textContent = "El nombre es requerido";
+      errorDiv.classList.remove("hidden");
+    }
+    return;
+  }
+  
+  try {
+    const result = await callGoogleScript("agregarCategoria", { nombre });
+    
+    if (result.status === "success") {
+      cerrarModalNuevaCategoria();
+      showToast("Categoría creada: " + nombre, "success");
+      
+      // Actualizar select en modal de producto
+      await cargarCategoriasEnSelect();
+      
+      // Seleccionar la nueva categoría
+      const select = document.getElementById("np_categoria");
+      if (select) {
+        select.value = nombre;
+      }
+      
+      // Recargar categorías generales
+      if (typeof loadInitialData === "function") {
+        loadInitialData();
+      }
+    } else {
+      if (errorDiv) {
+        errorDiv.textContent = result.message || "Error al crear categoría";
+        errorDiv.classList.remove("hidden");
+      }
+    }
+  } catch (e) {
+    if (errorDiv) {
+      errorDiv.textContent = "Error de conexión";
+      errorDiv.classList.remove("hidden");
+    }
+  }
+}
+
+function calcularPreciosDerivados() {
+  const volumenMl = parseFloat(document.getElementById("np_volumen_ml")?.value) || 0;
+  const contenidoOz = parseFloat(document.getElementById("np_contenido_oz")?.value) || 0;
+  const precioBotella = parseFloat(document.getElementById("np_precio_botella")?.value) || 0;
+  
+  const precioOnzaInput = document.getElementById("np_precio_onza");
+  const precioMlInput = document.getElementById("np_precio_ml");
+  
+  if (contenidoOz > 0) {
+    const precioOnza = precioBotella / contenidoOz;
+    if (precioOnzaInput) {
+      precioOnzaInput.value = precioOnza.toFixed(2);
+    }
+  } else if (precioOnzaInput) {
+    precioOnzaInput.value = "";
+  }
+  
+  if (volumenMl > 0) {
+    const precioMl = precioBotella / volumenMl;
+    if (precioMlInput) {
+      precioMlInput.value = precioMl.toFixed(4);
+    }
+  } else if (precioMlInput) {
+    precioMlInput.value = "";
+  }
+}
+
+async function validarCodigoUnico(codigo) {
+  const statusEl = document.getElementById("np_codigo_status");
+  const inputEl = document.getElementById("np_codigo");
+  
+  if (!codigo || codigo.trim() === "") {
+    if (statusEl) {
+      statusEl.textContent = "";
+      statusEl.className = "field-status";
+    }
+    return;
+  }
+  
+  if (statusEl) {
+    statusEl.textContent = "Validando...";
+    statusEl.className = "field-status loading";
+  }
+  if (inputEl) {
+    inputEl.classList.remove("valid", "invalid");
+  }
+  
+  try {
+    const result = await callGoogleScript("buscarProducto", { query: codigo.trim() });
+    
+    if (result.status === "success" && result.data && result.data.length > 0) {
+      if (statusEl) {
+        statusEl.textContent = "Código en uso";
+        statusEl.className = "field-status error";
+      }
+      if (inputEl) {
+        inputEl.classList.add("invalid");
+        inputEl.classList.remove("valid");
+      }
+    } else {
+      if (statusEl) {
+        statusEl.textContent = "Código disponible";
+        statusEl.className = "field-status success";
+      }
+      if (inputEl) {
+        inputEl.classList.add("valid");
+        inputEl.classList.remove("invalid");
+      }
+    }
+  } catch (e) {
+    if (statusEl) {
+      statusEl.textContent = "";
+      statusEl.className = "field-status";
+    }
+  }
+}
+
+function mostrarErrorProducto(mensaje) {
+  const errorDiv = document.getElementById("np_error");
+  if (errorDiv) {
+    errorDiv.textContent = mensaje;
+    errorDiv.classList.remove("hidden");
+  }
+}
+
+function limpiarErrorProducto() {
+  const errorDiv = document.getElementById("np_error");
+  if (errorDiv) {
+    errorDiv.textContent = "";
+    errorDiv.classList.add("hidden");
+  }
+}
+
+async function guardarNuevoProducto() {
+  const btnGuardar = document.getElementById("btnGuardarProducto");
+  if (btnGuardar) {
+    btnGuardar.disabled = true;
+    btnGuardar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+  }
+  
+  limpiarErrorProducto();
+  
+  // Recoger datos del formulario
+  const codigo = document.getElementById("np_codigo")?.value.trim();
+  const nombre = document.getElementById("np_nombre")?.value.trim();
+  const categoria = document.getElementById("np_categoria")?.value;
+  const volumenMl = parseFloat(document.getElementById("np_volumen_ml")?.value) || 0;
+  const contenidoOz = parseFloat(document.getElementById("np_contenido_oz")?.value) || 0;
+  const precioBotella = parseFloat(document.getElementById("np_precio_botella")?.value) || 0;
+  const precioOnza = parseFloat(document.getElementById("np_precio_onza")?.value) || 0;
+  const precioMl = parseFloat(document.getElementById("np_precio_ml")?.value) || 0;
+  const precioVenta = parseFloat(document.getElementById("np_precio_venta")?.value) || 0;
+  const precioVenta2 = parseFloat(document.getElementById("np_precio_venta_2")?.value) || 0;
+  const stock = parseFloat(document.getElementById("np_stock")?.value) || 0;
+  
+  // Validaciones
+  if (!codigo) {
+    mostrarErrorProducto("El código es requerido");
+    resetearBotonGuardar();
+    return;
+  }
+  
+  if (document.getElementById("np_codigo")?.classList.contains("invalid")) {
+    mostrarErrorProducto("El código ya está en uso. Use uno diferente.");
+    resetearBotonGuardar();
+    return;
+  }
+  
+  if (!nombre) {
+    mostrarErrorProducto("El nombre es requerido");
+    resetearBotonGuardar();
+    return;
+  }
+  
+  if (!categoria) {
+    mostrarErrorProducto("La categoría es requerida");
+    resetearBotonGuardar();
+    return;
+  }
+  
+  if (volumenMl <= 0) {
+    mostrarErrorProducto("El volumen debe ser mayor a 0");
+    resetearBotonGuardar();
+    return;
+  }
+  
+  if (contenidoOz <= 0) {
+    mostrarErrorProducto("El contenido en oz debe ser mayor a 0");
+    resetearBotonGuardar();
+    return;
+  }
+  
+  if (precioBotella < 0) {
+    mostrarErrorProducto("El precio de botella no puede ser negativo");
+    resetearBotonGuardar();
+    return;
+  }
+  
+  if (precioVenta < 0) {
+    mostrarErrorProducto("El precio de venta es requerido y no puede ser negativo");
+    resetearBotonGuardar();
+    return;
+  }
+  
+  if (stock < 0) {
+    mostrarErrorProducto("El stock no puede ser negativo");
+    resetearBotonGuardar();
+    return;
+  }
+  
+  try {
+    const data = {
+      codigo,
+      nombre,
+      categoria,
+      volumen_ml: volumenMl,
+      contenido_oz: contenidoOz,
+      precio_botella: precioBotella,
+      precio_onza: precioOnza,
+      precio_ml: precioMl,
+      precio_venta: precioVenta,
+      precio_venta_2: precioVenta2,
+      stock: stock
+    };
+    
+    const result = await callGoogleScript("agregarProducto", data);
+    
+    if (result.status === "success") {
+      cerrarModalNuevoProducto();
+      showToast("Producto agregado: " + nombre, "success", 4000);
+      
+      // Refrescar inventario si estamos en esa sección
+      if (typeof loadInventario === "function") {
+        loadInventario();
+      }
+    } else if (result.status === "warning") {
+      // Código duplicado
+      mostrarErrorProducto(result.message);
+      resetearBotonGuardar();
+    } else {
+      mostrarErrorProducto(result.message || "Error al guardar");
+      resetearBotonGuardar();
+    }
+  } catch (e) {
+    mostrarErrorProducto("Error de conexión: " + e.message);
+    resetearBotonGuardar();
+  }
+}
+
+function resetearBotonGuardar() {
+  const btnGuardar = document.getElementById("btnGuardarProducto");
+  if (btnGuardar) {
+    btnGuardar.disabled = false;
+    btnGuardar.innerHTML = '<i class="fas fa-save"></i> Guardar Producto';
+  }
+}
