@@ -1133,7 +1133,7 @@ input[type="number"]::-webkit-inner-spin-button {
   flex-grow: 1;
   text-align: center;
   font-size: 1.25rem;
-  color: var(--primary-dark);
+  color: var(--text-primary);
 }
 
 .factura-header-brand {
