@@ -9919,6 +9919,22 @@ async function cargarCategoriasEnSelect() {
   }
 }
 
+function mostrarErrorProducto(mensaje) {
+  const errorDiv = document.getElementById("np_error");
+  if (errorDiv) {
+    errorDiv.textContent = mensaje;
+    errorDiv.classList.remove("hidden");
+  }
+}
+
+function limpiarErrorProducto() {
+  const errorDiv = document.getElementById("np_error");
+  if (errorDiv) {
+    errorDiv.textContent = "";
+    errorDiv.classList.add("hidden");
+  }
+}
+
 function cerrarModalNuevoProducto() {
   const modal = document.getElementById("nuevoProductoModal");
   if (modal) {
