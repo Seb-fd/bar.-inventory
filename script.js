@@ -301,7 +301,7 @@ function initLogin() {
 
 function aplicarLogin(role) {
   currentUserRole = role;
-  localStorage.setItem("gitanas_role", role);
+  localStorage.setItem("hermit_role", role);
 
   const loginOverlay = document.getElementById("loginOverlay");
   const sidebar = document.querySelector(".sidebar");
@@ -330,7 +330,7 @@ function aplicarLogin(role) {
 
 function logout() {
   currentUserRole = null;
-  localStorage.removeItem("gitanas_role");
+  localStorage.removeItem("hermit_role");
   location.reload(); // Forma más limpia de resetear todo el estado
 }
 
@@ -425,7 +425,7 @@ function checkPersistedLogin() {
   const sidebarLogout = document.getElementById("sidebarLogout");
   if (sidebarLogout) sidebarLogout.onclick = logout;
 
-  const savedRole = localStorage.getItem("gitanas_role");
+  const savedRole = localStorage.getItem("hermit_role");
   if (savedRole) {
     aplicarLogin(savedRole);
     // Verificar visibilidad del botón hamburguesa después del login
@@ -4305,9 +4305,9 @@ async function mostrarFactura(idVenta) {
     let html = `
       <div class="factura-header-brand">
         <img src="img/logo.png" class="logo">
-        <div class="factura-business-name">GITANAS</div>
-        <div class="factura-nit">NIT: 1085334745-2</div>
-        <div class="factura-address">Dirección: Calle 15 #26 - 88 Centro</div>
+        <div class="factura-business-name">The Hermit Cocktail Bar</div>
+        <div class="factura-nit">NIT: 1085327746</div>
+        <div class="factura-address">Dirección: Calle 11 #36 - 06</div>
         <div class="factura-whatsapp">WhatsApp: 316 785 2058</div>
         <div class="factura-iva">No somos responsables de IVA</div>
       </div>
@@ -4534,9 +4534,9 @@ function mostrarFacturaDesdeDatos(venta, items) {
   let html = `
     <div class="factura-header-brand">
       <img src="img/logo.png" class="logo">
-      <div class="factura-business-name">GITANAS</div>
-      <div class="factura-nit">NIT: 1085334745-2</div>
-      <div class="factura-address">Dirección: Calle 15 #26 - 88 Centro</div>
+      <div class="factura-business-name">The Hermit Cocktail Bar</div>
+      <div class="factura-nit">NIT: 1085327746</div>
+      <div class="factura-address">Dirección: Calle 11 #36 - 06</div>
       <div class="factura-whatsapp">WhatsApp: 316 785 2058</div>
       <div class="factura-iva">No somos responsables de IVA</div>
     </div>
@@ -4903,7 +4903,7 @@ function imprimirTicketDomicilio() {
     </head>
     <body>
       <img src="img/logo.png" class="logo">
-      <h2>GITANAS</h2>
+      <h2>The Hermit Cocktail Bar</h2>
       <hr>
       
       <div class="domicilio-titulo">ENTREGA A DOMICILIO</div>
@@ -5043,10 +5043,10 @@ function generarHTMLTermico(data) {
     </head>
     <body>
       <img src="img/logo.png" class="logo">
-      <h2>GITANAS</h2>
-      <div class="center">NIT: 1085334745-2</div>
-      <div class="center">Dirección: Calle 15 #26 - 88 Centro</div>
-      <div class="center">WhatsApp: 316 758 2058</div>
+      <h2>The Hermit Cocktail Bar</h2>
+      <div class="center">NIT: 1085327746</div>
+      <div class="center">Dirección: Calle 11 #36 - 06</div>
+      <div class="center">WhatsApp: 314 239 3553</div>
       <div class="center">No somos responsables de IVA</div>
       <hr>
       <div class="center bold">Recibo de Venta #${formatearConsecutivo(venta.consecutivo)}</div>
@@ -6475,9 +6475,9 @@ async function mostrarCompra(idCompra) {
   let html = `
     <div class="factura-header-brand">
       <img src="img/logo.png" class="logo">
-      <div class="factura-business-name">GITANAS</div>
-      <div class="factura-nit">NIT: 1085334745-2</div>
-      <div class="factura-address">Dirección: Calle 15 #26 - 88 Centro</div>
+      <div class="factura-business-name">The Hermit Cocktail Bar</div>
+      <div class="factura-nit">NIT: 1085327746</div>
+      <div class="factura-address">Dirección: Calle 11 #36 - 06</div>
       <div class="factura-whatsapp">WhatsApp: 316 785 2058</div>
       <div class="factura-iva">No somos responsables de IVA</div>
     </div>
