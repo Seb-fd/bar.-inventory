@@ -9899,6 +9899,26 @@ function abrirModalNuevoProducto() {
   modal.classList.remove("hidden");
 }
 
+async function cargarCategoriasEnSelect() {
+  const select = document.getElementById("np_categoria");
+  if (!select) return;
+
+  try {
+    const data = await utils.fetchJson(`${SCRIPT_URL}?action=getCategorias`);
+    if (data.status === "success" && data.data) {
+      select.innerHTML = '<option value="" disabled selected>Seleccionar...</option>';
+      data.data.forEach(cat => {
+        const name = cat.nombre || `(ID ${cat.id})`;
+        select.innerHTML += `<option value="${name}">${name}</option>`;
+      });
+    } else {
+      select.innerHTML = '<option value="" disabled selected>Sin categorías</option>';
+    }
+  } catch (e) {
+    select.innerHTML = '<option value="" disabled selected>Error al cargar</option>';
+  }
+}
+
 function cerrarModalNuevoProducto() {
   const modal = document.getElementById("nuevoProductoModal");
   if (modal) {
