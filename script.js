@@ -9899,6 +9899,93 @@ function abrirModalNuevoProducto() {
   modal.classList.remove("hidden");
 }
 
+function mostrarModalNuevaCategoria() {
+  const modal = document.getElementById("nuevaCategoriaModal");
+  const input = document.getElementById("nueva_cat_nombre");
+  const error = document.getElementById("cat_error");
+  if (input) input.value = "";
+  if (error) {
+    error.classList.add("hidden");
+    error.textContent = "";
+  }
+  if (modal) modal.classList.remove("hidden");
+}
+
+async function crearNuevaCategoria() {
+  const input = document.getElementById("nueva_cat_nombre");
+  const error = document.getElementById("cat_error");
+  const nombre = input?.value.trim();
+  if (!nombre) {
+    if (error) {
+      error.textContent = "El nombre es requerido";
+      error.classList.remove("hidden");
+    }
+    return;
+  }
+  try {
+    const result = await utils.fetchJson(SCRIPT_URL, {
+      method: "POST",
+      body: JSON.stringify({ action: "agregarCategoria", nombre }),
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+    });
+    if (result.status === "success") {
+      const modal = document.getElementById("nuevaCategoriaModal");
+      if (modal) modal.classList.add("hidden");
+      showToast("Categoría creada", "success", 3000);
+      await cargarCategoriasEnSelect();
+    } else {
+      if (error) {
+        error.textContent = result.message || "Error al crear categoría";
+        error.classList.remove("hidden");
+      }
+    }
+  } catch (e) {
+    if (error) {
+      error.textContent = "Error de conexión";
+      error.classList.remove("hidden");
+    }
+  }
+}
+
+function cerrarModalNuevaCategoria() {
+  const modal = document.getElementById("nuevaCategoriaModal");
+  if (modal) modal.classList.add("hidden");
+}
+
+async function validarCodigoUnico(codigo) {
+  const statusEl = document.getElementById("np_codigo_status");
+  const input = document.getElementById("np_codigo");
+  if (!codigo || !statusEl || !input) return;
+
+  const modal = document.getElementById("nuevoProductoModal");
+  if (modal?.dataset.modoEdicion === "true") {
+    statusEl.textContent = "";
+    statusEl.className = "field-status";
+    return;
+  }
+
+  try {
+    const data = await utils.fetchJson(`${SCRIPT_URL}?action=getProductos`);
+    if (data.status === "success" && data.data) {
+      const existe = data.data.some(p => String(p.código || "").toLowerCase() === codigo.toLowerCase());
+      if (existe) {
+        statusEl.textContent = "Código en uso";
+        statusEl.className = "field-status";
+        input.classList.add("invalid");
+        input.classList.remove("valid");
+      } else {
+        statusEl.textContent = "Código disponible";
+        statusEl.className = "field-status";
+        input.classList.add("valid");
+        input.classList.remove("invalid");
+      }
+    }
+  } catch (e) {
+    statusEl.textContent = "";
+    statusEl.className = "field-status";
+  }
+}
+
 async function cargarCategoriasEnSelect() {
   const select = document.getElementById("np_categoria");
   if (!select) return;
@@ -10205,6 +10292,35 @@ async function guardarNuevoProducto() {
     mostrarErrorProducto("Error de conexión: " + e.message);
     resetearBotonGuardar();
   }
+}
+
+function calcularPreciosDerivados() {
+  const precioBotella = parseFloat(document.getElementById("np_precio_botella")?.value) || 0;
+  const contenidoOz = parseFloat(document.getElementById("np_contenido_oz")?.value) || 0;
+  const volumenMl = parseFloat(document.getElementById("np_volumen_ml")?.value) || 0;
+
+  const precioOnzaInput = document.getElementById("np_precio_onza");
+  const precioMlInput = document.getElementById("np_precio_ml");
+
+  if (precioBotella > 0 && contenidoOz > 0) {
+    precioOnzaInput.value = (precioBotella / contenidoOz).toFixed(4);
+  } else {
+    precioOnzaInput.value = "";
+  }
+
+  if (precioBotella > 0 && volumenMl > 0) {
+    precioMlInput.value = (precioBotella / volumenMl).toFixed(4);
+  } else {
+    precioMlInput.value = "";
+  }
+}
+
+function actualizarStockPorBotellas() {
+  const botellas = parseFloat(document.getElementById("np_botellas")?.value) || 0;
+  const volumenMl = parseFloat(document.getElementById("np_volumen_ml")?.value) || 750;
+  const stock = Math.round(botellas * volumenMl);
+  document.getElementById("np_stock").value = stock;
+  if (typeof calcularPreciosDerivados === "function") calcularPreciosDerivados();
 }
 
 function resetearBotonGuardar() {
