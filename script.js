@@ -2385,7 +2385,7 @@ function filtrarInventario() {
             const pv1 = Number(p.precio_venta) || 0;
             const pv2 = Number(p.precio_venta_2) || 0;
             return `
-          <tr onclick="mostrarInventarioDetalle('${p.id}')" style="cursor: pointer;">
+          <tr onclick="abrirModalEditarProducto(inventarioCache.find(x => x.id === '${p.id}'))" style="cursor: pointer;">
             <td>${p.nombre}</td>
             <td>${p.código}</td>
             <td>${p.categoría}</td>
@@ -9856,19 +9856,19 @@ document.addEventListener("cuentasActualizadas", function (e) {
 function abrirModalNuevoProducto() {
   const modal = document.getElementById("nuevoProductoModal");
   if (!modal) return;
-  
-  // Limpiar formulario
+
+  modal.dataset.modoEdicion = "false";
+  modal.dataset.productoId = "";
+
   const form = document.getElementById("nuevoProductoForm");
   if (form) form.reset();
-  
-  // Limpiar estados y errores
+
   const errorDiv = document.getElementById("np_error");
   if (errorDiv) {
     errorDiv.classList.add("hidden");
     errorDiv.textContent = "";
   }
-  
-  // Limpiar validación visual
+
   document.querySelectorAll("#nuevoProductoForm input").forEach(input => {
     input.classList.remove("valid", "invalid");
   });
@@ -9876,208 +9876,182 @@ function abrirModalNuevoProducto() {
     span.textContent = "";
     span.className = "field-status";
   });
-  
-  // Ocultar input de nueva categoría
+
   const nuevaCatInput = document.getElementById("np_nueva_categoria");
   if (nuevaCatInput) nuevaCatInput.classList.add("hidden");
-  
-  // Cargar categorías
-  cargarCategoriasEnSelect();
-  
-  // Resetear botón
+
+  document.getElementById("np_titulo").innerHTML = '<i class="fas fa-plus-circle"></i> Nuevo Producto';
+
   const btnGuardar = document.getElementById("btnGuardarProducto");
   if (btnGuardar) {
     btnGuardar.disabled = false;
     btnGuardar.innerHTML = '<i class="fas fa-save"></i> Guardar Producto';
+    btnGuardar.onclick = guardarNuevoProducto;
   }
-  
+
+  document.getElementById("np_codigo").readOnly = false;
+  document.getElementById("np_codigo_status").textContent = "";
+  document.getElementById("np_codigo_status").className = "field-status";
+  document.getElementById("np_nombre").readOnly = false;
+
+  cargarCategoriasEnSelect();
+
   modal.classList.remove("hidden");
 }
 
 function cerrarModalNuevoProducto() {
   const modal = document.getElementById("nuevoProductoModal");
-  if (modal) modal.classList.add("hidden");
-}
-
-async function cargarCategoriasEnSelect() {
-  const select = document.getElementById("np_categoria");
-  if (!select) return;
-  
-  try {
-    const data = await utils.fetchJson(`${SCRIPT_URL}?action=getCategorias`);
-    if (data.status === "success" && data.data) {
-      select.innerHTML = '<option value="" disabled selected>Seleccionar...</option>';
-      data.data.forEach(cat => {
-        const name = cat.nombre || `(ID ${cat.id})`;
-        select.innerHTML += `<option value="${name}">${name}</option>`;
-      });
-    } else {
-      select.innerHTML = '<option value="" disabled selected>Sin categorías</option>';
-    }
-  } catch (e) {
-    select.innerHTML = '<option value="" disabled selected>Error al cargar</option>';
-  }
-}
-
-function mostrarInputNuevaCategoria() {
-  mostrarModalNuevaCategoria();
-}
-
-function mostrarModalNuevaCategoria() {
-  const modal = document.getElementById("nuevaCategoriaModal");
   if (modal) {
-    document.getElementById("nueva_cat_nombre").value = "";
-    const errorDiv = document.getElementById("cat_error");
-    if (errorDiv) {
-      errorDiv.classList.add("hidden");
-      errorDiv.textContent = "";
-    }
-    modal.classList.remove("hidden");
+    modal.classList.add("hidden");
+    modal.dataset.modoEdicion = "false";
+    modal.dataset.productoId = "";
   }
+
+  document.getElementById("np_titulo").innerHTML = '<i class="fas fa-plus-circle"></i> Nuevo Producto';
+
+  const btnGuardar = document.getElementById("btnGuardarProducto");
+  if (btnGuardar) {
+    btnGuardar.innerHTML = '<i class="fas fa-save"></i> Guardar Producto';
+    btnGuardar.onclick = guardarNuevoProducto;
+  }
+
+  document.getElementById("np_codigo").readOnly = false;
+  document.getElementById("np_codigo_status").textContent = "";
+  document.getElementById("np_codigo_status").className = "field-status";
+  document.getElementById("np_nombre").readOnly = false;
 }
 
-function cerrarModalNuevaCategoria() {
-  const modal = document.getElementById("nuevaCategoriaModal");
-  if (modal) modal.classList.add("hidden");
+function abrirModalEditarProducto(producto) {
+  if (!producto) return;
+
+  const modal = document.getElementById("nuevoProductoModal");
+  modal.dataset.modoEdicion = "true";
+  modal.dataset.productoId = producto.id;
+
+  document.getElementById("np_titulo").innerHTML = '<i class="fas fa-edit"></i> Editar Producto';
+
+  const btn = document.getElementById("btnGuardarProducto");
+  btn.innerHTML = '<i class="fas fa-save"></i> Actualizar Producto';
+  btn.onclick = guardarProductoEditado;
+
+  document.getElementById("np_error").classList.add("hidden");
+
+  document.getElementById("np_codigo").value = producto.código;
+  document.getElementById("np_codigo").readOnly = true;
+  document.getElementById("np_codigo_status").textContent = "(no editable)";
+  document.getElementById("np_codigo_status").className = "field-status";
+
+  document.getElementById("np_nombre").value = producto.nombre;
+  document.getElementById("np_nombre").readOnly = true;
+
+  cargarCategoriasEnSelect().then(() => {
+    document.getElementById("np_categoria").value = producto.categoría;
+  });
+
+  document.getElementById("np_volumen_ml").value = producto.volumen_ml;
+  document.getElementById("np_contenido_oz").value = producto.contenido_oz;
+  document.getElementById("np_precio_botella").value = producto.precio_botella;
+  document.getElementById("np_precio_onza").value = producto.precio_onza || "";
+  document.getElementById("np_precio_ml").value = producto.precio_ml || "";
+  document.getElementById("np_precio_venta").value = producto.precio_venta;
+  document.getElementById("np_precio_venta_2").value = producto.precio_venta_2 || "";
+
+  const volumenMl = parseFloat(producto.volumen_ml) || 0;
+  const stockMl = parseFloat(producto.stock) || 0;
+  const botellas = volumenMl > 0 ? stockMl / volumenMl : 0;
+  document.getElementById("np_botellas").value = Number.isInteger(botellas) ? botellas : parseFloat(botellas.toFixed(2));
+  document.getElementById("np_stock").value = stockMl;
+
+  document.querySelectorAll("#nuevoProductoForm input").forEach(i => i.classList.remove("valid", "invalid"));
+  document.querySelectorAll(".field-status").forEach(s => { s.textContent = ""; s.className = "field-status"; });
+
+  modal.classList.remove("hidden");
 }
 
-async function crearNuevaCategoria() {
-  const nombreInput = document.getElementById("nueva_cat_nombre");
-  const nombre = nombreInput?.value.trim();
-  const errorDiv = document.getElementById("cat_error");
-  
-  if (!nombre) {
-    if (errorDiv) {
-      errorDiv.textContent = "El nombre es requerido";
-      errorDiv.classList.remove("hidden");
-    }
+async function guardarProductoEditado() {
+  const modal = document.getElementById("nuevoProductoModal");
+  const productoId = modal.dataset.productoId;
+  if (!productoId) {
+    mostrarErrorProducto("ID del producto no encontrado.");
+    resetearBotonGuardar();
     return;
   }
-  
-  try {
-    const result = await callGoogleScript("agregarCategoria", { nombre });
-    
-    if (result.status === "success") {
-      cerrarModalNuevaCategoria();
-      showToast("Categoría creada: " + nombre, "success");
-      
-      // Actualizar select en modal de producto
-      await cargarCategoriasEnSelect();
-      
-      // Seleccionar la nueva categoría
-      const select = document.getElementById("np_categoria");
-      if (select) {
-        select.value = nombre;
-      }
-      
-      // Recargar categorías generales
-      if (typeof loadInitialData === "function") {
-        loadInitialData();
-      }
-    } else {
-      if (errorDiv) {
-        errorDiv.textContent = result.message || "Error al crear categoría";
-        errorDiv.classList.remove("hidden");
-      }
-    }
-  } catch (e) {
-    if (errorDiv) {
-      errorDiv.textContent = "Error de conexión";
-      errorDiv.classList.remove("hidden");
-    }
-  }
-}
 
-function calcularPreciosDerivados() {
+  const btnGuardar = document.getElementById("btnGuardarProducto");
+  if (btnGuardar) {
+    btnGuardar.disabled = true;
+    btnGuardar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Actualizando...';
+  }
+
+  limpiarErrorProducto();
+
+  const categoria = document.getElementById("np_categoria")?.value;
   const volumenMl = parseFloat(document.getElementById("np_volumen_ml")?.value) || 0;
   const contenidoOz = parseFloat(document.getElementById("np_contenido_oz")?.value) || 0;
   const precioBotella = parseFloat(document.getElementById("np_precio_botella")?.value) || 0;
-  
-  const precioOnzaInput = document.getElementById("np_precio_onza");
-  const precioMlInput = document.getElementById("np_precio_ml");
-  
-  if (contenidoOz > 0) {
-    const precioOnza = precioBotella / contenidoOz;
-    if (precioOnzaInput) {
-      precioOnzaInput.value = precioOnza.toFixed(2);
-    }
-  } else if (precioOnzaInput) {
-    precioOnzaInput.value = "";
-  }
-  
-  if (volumenMl > 0) {
-    const precioMl = precioBotella / volumenMl;
-    if (precioMlInput) {
-      precioMlInput.value = precioMl.toFixed(4);
-    }
-  } else if (precioMlInput) {
-    precioMlInput.value = "";
-  }
-}
+  const precioOnza = parseFloat(document.getElementById("np_precio_onza")?.value) || 0;
+  const precioMl = parseFloat(document.getElementById("np_precio_ml")?.value) || 0;
+  const precioVenta = parseFloat(document.getElementById("np_precio_venta")?.value) || 0;
+  const precioVenta2 = parseFloat(document.getElementById("np_precio_venta_2")?.value) || 0;
+  const stock = parseFloat(document.getElementById("np_stock")?.value) || 0;
 
-async function validarCodigoUnico(codigo) {
-  const statusEl = document.getElementById("np_codigo_status");
-  const inputEl = document.getElementById("np_codigo");
-  
-  if (!codigo || codigo.trim() === "") {
-    if (statusEl) {
-      statusEl.textContent = "";
-      statusEl.className = "field-status";
-    }
+  if (!categoria) {
+    mostrarErrorProducto("La categoría es requerida.");
+    resetearBotonGuardar();
     return;
   }
-  
-  if (statusEl) {
-    statusEl.textContent = "Validando...";
-    statusEl.className = "field-status loading";
+
+  if (volumenMl <= 0) {
+    mostrarErrorProducto("El volumen debe ser mayor a 0");
+    resetearBotonGuardar();
+    return;
   }
-  if (inputEl) {
-    inputEl.classList.remove("valid", "invalid");
+
+  if (contenidoOz <= 0) {
+    mostrarErrorProducto("El contenido en oz debe ser mayor a 0");
+    resetearBotonGuardar();
+    return;
   }
-  
+
+  if (precioBotella < 0) {
+    mostrarErrorProducto("El precio de botella no puede ser negativo");
+    resetearBotonGuardar();
+    return;
+  }
+
+  if (precioVenta < 0) {
+    mostrarErrorProducto("El precio de venta no puede ser negativo");
+    resetearBotonGuardar();
+    return;
+  }
+
   try {
-    const result = await callGoogleScript("buscarProducto", { query: codigo.trim() });
-    
-    if (result.status === "success" && result.data && result.data.length > 0) {
-      if (statusEl) {
-        statusEl.textContent = "Código en uso";
-        statusEl.className = "field-status error";
-      }
-      if (inputEl) {
-        inputEl.classList.add("invalid");
-        inputEl.classList.remove("valid");
-      }
+    const data = {
+      id: productoId,
+      categoría: categoria,
+      volumen_ml: volumenMl,
+      contenido_oz: contenidoOz,
+      precio_botella: precioBotella,
+      precio_onza: precioOnza,
+      precio_ml: precioMl,
+      precio_venta: precioVenta,
+      precio_venta_2: precioVenta2 || 0,
+      stock: stock
+    };
+
+    const result = await callGoogleScript("actualizarProducto", data);
+
+    if (result.status === "success") {
+      cerrarModalNuevoProducto();
+      showToast("Producto actualizado", "success", 4000);
+      if (typeof loadInventario === "function") loadInventario();
     } else {
-      if (statusEl) {
-        statusEl.textContent = "Código disponible";
-        statusEl.className = "field-status success";
-      }
-      if (inputEl) {
-        inputEl.classList.add("valid");
-        inputEl.classList.remove("invalid");
-      }
+      mostrarErrorProducto(result.message || "Error al actualizar.");
+      resetearBotonGuardar();
     }
   } catch (e) {
-    if (statusEl) {
-      statusEl.textContent = "";
-      statusEl.className = "field-status";
-    }
-  }
-}
-
-function mostrarErrorProducto(mensaje) {
-  const errorDiv = document.getElementById("np_error");
-  if (errorDiv) {
-    errorDiv.textContent = mensaje;
-    errorDiv.classList.remove("hidden");
-  }
-}
-
-function limpiarErrorProducto() {
-  const errorDiv = document.getElementById("np_error");
-  if (errorDiv) {
-    errorDiv.textContent = "";
-    errorDiv.classList.add("hidden");
+    mostrarErrorProducto("Error de conexión: " + e.message);
+    resetearBotonGuardar();
   }
 }
 
@@ -10198,9 +10172,17 @@ async function guardarNuevoProducto() {
 }
 
 function resetearBotonGuardar() {
+  const modal = document.getElementById("nuevoProductoModal");
   const btnGuardar = document.getElementById("btnGuardarProducto");
-  if (btnGuardar) {
-    btnGuardar.disabled = false;
+  if (!btnGuardar) return;
+
+  btnGuardar.disabled = false;
+
+  if (modal?.dataset.modoEdicion === "true") {
+    btnGuardar.innerHTML = '<i class="fas fa-save"></i> Actualizar Producto';
+    btnGuardar.onclick = guardarProductoEditado;
+  } else {
     btnGuardar.innerHTML = '<i class="fas fa-save"></i> Guardar Producto';
+    btnGuardar.onclick = guardarNuevoProducto;
   }
 }

@@ -493,9 +493,11 @@ function doPost(e) {
     }
     if (action === "agregarCategoria") {
       result = agregarCategoria(requestData);
-    } else if (action === "agregarProducto") {
-      result = agregarProducto(requestData);
-    } else if (action === "registrarTransaccion") {
+} else if (action === "agregarProducto") {
+    result = agregarProducto(requestData);
+  } else if (action === "actualizarProducto") {
+    result = actualizarProducto(requestData);
+  } else if (action === "registrarTransaccion") {
       result = registrarTransaccion(requestData);
     } else if (action === "registrarVentaPOS") {
       result = registrarVentaPOS(requestData);
@@ -755,6 +757,84 @@ function agregarProducto(data) {
       status: "error",
       message: `Error al escribir producto: ${e.message}`,
     };
+  }
+}
+
+function actualizarProducto(data) {
+  try {
+    if (!data || !data.id) {
+      return { status: "error", message: "ID del producto es requerido." };
+    }
+
+    const ss = getSpreadsheet();
+    const sheet = ss.getSheetByName(HOJA_PRODUCTOS);
+    if (!sheet) {
+      return { status: "error", message: "Hoja de productos no encontrada." };
+    }
+
+    const dataRange = sheet.getDataRange().getValues();
+    const headers = dataRange[0];
+    const idIndex = headers.indexOf("id");
+    if (idIndex === -1) {
+      return { status: "error", message: "Columna 'id' no encontrada." };
+    }
+
+    const rowIndex = dataRange.findIndex(
+      (row, i) => i > 0 && String(row[idIndex]) === String(data.id)
+    );
+    if (rowIndex === -1) {
+      return { status: "error", message: "Producto no encontrado." };
+    }
+    const rowNum = rowIndex + 1;
+
+    const camposEditables = [
+      "categoría",
+      "volumen_ml",
+      "contenido_oz",
+      "precio_botella",
+      "precio_onza",
+      "precio_ml",
+      "precio_venta",
+      "precio_venta_2",
+      "stock"
+    ];
+
+    camposEditables.forEach((campo) => {
+      if (data[campo] !== undefined) {
+        const colIdx = headers.indexOf(campo);
+        if (colIdx !== -1) {
+          let valor = data[campo];
+          if (["volumen_ml", "contenido_oz", "precio_botella", "precio_onza",
+               "precio_ml", "precio_venta", "precio_venta_2", "stock"].includes(campo)) {
+            valor = parseFloat(valor) || 0;
+          }
+          sheet.getRange(rowNum, colIdx + 1).setValue(valor);
+        }
+      }
+    });
+
+    if (data.precio_botella !== undefined) {
+      const pb = parseFloat(data.precio_botella) || 0;
+      const co = data.contenido_oz !== undefined
+        ? parseFloat(data.contenido_oz) || 0
+        : parseFloat(dataRange[rowIndex][headers.indexOf("contenido_oz")]) || 0;
+      const vm = data.volumen_ml !== undefined
+        ? parseFloat(data.volumen_ml) || 0
+        : parseFloat(dataRange[rowIndex][headers.indexOf("volumen_ml")]) || 0;
+
+      if (co > 0) {
+        const colIdx = headers.indexOf("precio_onza");
+        if (colIdx !== -1) sheet.getRange(rowNum, colIdx + 1).setValue(pb / co);
+      }
+      if (vm > 0) {
+        const colIdx = headers.indexOf("precio_ml");
+        if (colIdx !== -1) sheet.getRange(rowNum, colIdx + 1).setValue(pb / vm);
+      }
+    }
+
+    return { status: "success", message: "Producto actualizado correctamente." };
+  } catch (e) {
+    return { status: "error", message: e.message };
   }
 }
 

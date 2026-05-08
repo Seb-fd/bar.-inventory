@@ -2462,7 +2462,7 @@
       <div class="factura-card" style="max-width: 600px">
         <div class="factura-header">
           <div style="width: 100px"></div>
-          <h3><i class="fas fa-plus-circle"></i> Nuevo Producto</h3>
+          <h3 id="np_titulo"><i class="fas fa-plus-circle"></i> Nuevo Producto</h3>
           <button
             onclick="cerrarModalNuevoProducto()"
             class="btn secondary-btn"
@@ -2525,8 +2525,18 @@
               <input type="number" id="np_precio_venta_2" placeholder="Precio promo (opcional)" min="0" />
             </div>
             <div class="form-group" style="grid-column: span 2;">
-              <label for="np_stock">Stock Inicial (ml) *</label>
-              <input type="number" id="np_stock" required placeholder="Ej: 750" min="0" />
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div class="form-group">
+                  <label for="np_botellas">Cant. Botellas</label>
+                  <input type="number" id="np_botellas" placeholder="Ej: 3" min="0" step="1" oninput="actualizarStockPorBotellas()" />
+                  <small class="field-hint">Calcula ml automáticamente</small>
+                </div>
+                <div class="form-group">
+                  <label for="np_stock">Stock (ml) *</label>
+                  <input type="number" id="np_stock" required placeholder="Ej: 2250" min="0" />
+                  <small class="field-hint">botellas × volumen ml</small>
+                </div>
+              </div>
             </div>
           </div>
           <div id="np_error" class="status-message error hidden" style="margin-top: 15px;"></div>
