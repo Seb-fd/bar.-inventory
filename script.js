@@ -1087,10 +1087,11 @@ async function calcularResumenFinanciero(fechaInicio = null, fechaFin = null) {
     let valorTotalInventario = 0;
     if (productosData.status === "success" && productosData.data) {
       valorTotalInventario = productosData.data.reduce((sum, p) => {
+        const stockMl = parseFloat(p.stock) || 0;
+        const volumenMl = parseFloat(p.volumen_ml) || 750;
         const precioBotella = parseFloat(p.precio_botella) || 0;
-        const contenidoOz = parseFloat(p.contenido_oz) || 1;
-        const stockOz = parseFloat(p.stock) || 0;
-        return sum + (stockOz * precioBotella) / contenidoOz;
+        if (stockMl <= 0 || volumenMl <= 0 || precioBotella <= 0) return sum;
+        return sum + (stockMl / volumenMl) * precioBotella;
       }, 0);
     }
 
@@ -1710,7 +1711,11 @@ async function renderNuevosGraficos(fechaInicio = null, fechaFin = null) {
     const inventarioCategoria = {};
     productos.forEach((p) => {
       const cat = p.categoría || "Sin Categoría";
-      const valor = (p.stock || 0) * (p.precio_botella || 0);
+      const stockMl = parseFloat(p.stock) || 0;
+      const volumenMl = parseFloat(p.volumen_ml) || 750;
+      const precioBotella = parseFloat(p.precio_botella) || 0;
+      if (stockMl <= 0 || volumenMl <= 0 || precioBotella <= 0) return;
+      const valor = (stockMl / volumenMl) * precioBotella;
       inventarioCategoria[cat] = (inventarioCategoria[cat] || 0) + valor;
     });
 
@@ -2147,7 +2152,7 @@ function updateProductDetails(product, detailDiv, prefix) {
   if (!isCompra && product.stock < 5) {
     detailDiv.innerHTML += `
                     <p class="status-message warning" style="display:block; margin-top:10px;">
-                        Stock bajo. Solo quedan ${product.stock} unidades.
+                        Stock bajo. Solo quedan ${product.stock} ml.
                     </p>`;
   }
 }
@@ -6917,8 +6922,12 @@ async function abrirGraficoDetalle(tipoGrafico) {
         const invCat = {};
         productos.forEach((p) => {
           const c = p.categoría || "Sin Categoría";
+          const stockMl = parseFloat(p.stock) || 0;
+          const volumenMl = parseFloat(p.volumen_ml) || 750;
+          const precioBotella = parseFloat(p.precio_botella) || 0;
+          if (stockMl <= 0 || volumenMl <= 0 || precioBotella <= 0) return;
           invCat[c] =
-            (invCat[c] || 0) + (p.stock || 0) * (p.precio_botella || 0);
+            (invCat[c] || 0) + (stockMl / volumenMl) * precioBotella;
         });
 
         chartConfig = {
@@ -7274,7 +7283,7 @@ async function abrirDetalleInventario() {
           codigo: p.código || "-",
           stock: p.stock || 0,
           precio_botella: `$${formatearCOP(p.precio_botella || 0)}`,
-          valor_total: `$${formatearCOP((p.stock || 0) * (p.precio_botella || 0))}`,
+          valor_total: `$${formatearCOP((p.stock || 0) / (p.volumen_ml || 750) * (p.precio_botella || 0))}`,
         }))
         .sort(
           (a, b) =>
@@ -9746,7 +9755,7 @@ function renderInventarioBajo() {
   const productos = inventarioCache || [];
   const bajos = productos.filter((p) => {
     const stock = parseFloat(p.stock) || 0;
-    return stock <= 10;
+    return stock <= 300;
   });
 
   if (bajos.length === 0) {
@@ -9758,12 +9767,12 @@ function renderInventarioBajo() {
   let html = "";
   bajos.forEach((p) => {
     const stock = parseFloat(p.stock) || 0;
-    const nivel = stock <= 5 ? "critico" : "bajo";
-    const ml = stock * 29.57;
+    const nivel = stock <= 150 ? "critico" : "bajo";
+    const ml = stock;
     html += `
       <div class="inventario-bajo-item ${nivel}">
         <span>${p.nombre}</span>
-        <span>${stock.toFixed(1)} oz / ${ml.toFixed(0)} ml</span>
+        <span>${ml.toFixed(0)} ml</span>
       </div>
     `;
   });

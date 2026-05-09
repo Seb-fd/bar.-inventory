@@ -1039,6 +1039,9 @@ function registrarVentaPOS(data) {
         nombre: productosData[i][nombreCol] || "",
         codigo: productosData[i][codigoCol] || "",
         stock: parseFloat(productosData[i][stockCol]) || 0,
+        volumenMl: parseFloat(
+          productosData[i][headers.indexOf("volumen_ml")]
+        ) || 750,
       };
     }
   }
@@ -1063,15 +1066,16 @@ function registrarVentaPOS(data) {
     }
 
     const stockActual = producto.stock;
+    const volumenMl = producto.volumenMl;
 
-    if (stockActual < cantidad) {
+    if (stockActual < cantidad * volumenMl) {
       return {
         status: "warning",
-        message: `Stock insuficiente para ${producto.nombre || productoId}. Disponible: ${stockActual}`,
+        message: `Stock insuficiente para ${producto.nombre || productoId}. Disponible: ${stockActual} ml (${(stockActual / volumenMl).toFixed(1)} botellas)`,
       };
     }
 
-    const nuevoStock = stockActual - cantidad;
+    const nuevoStock = stockActual - cantidad * volumenMl;
     updatesStock.push({ rowIndex: producto.rowIndex, nuevoStock });
 
     const descuentoItemPct = Number(item.descuento_item_pct) || 0;
@@ -1307,6 +1311,9 @@ function registrarCompraPOS(data) {
         nombre: productosData[i][nombreCol] || "",
         codigo: productosData[i][codigoCol] || "",
         stock: parseFloat(productosData[i][stockCol]) || 0,
+        volumenMl: parseFloat(
+          productosData[i][headers.indexOf("volumen_ml")]
+        ) || 750,
       };
     }
   }
@@ -1330,7 +1337,7 @@ function registrarCompraPOS(data) {
       };
     }
 
-    const nuevoStock = producto.stock + cantidad;
+    const nuevoStock = producto.stock + cantidad * producto.volumenMl;
     updatesStock.push({ rowIndex: producto.rowIndex, nuevoStock });
 
     const subtotalItem = cantidad * precio;

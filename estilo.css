@@ -2802,38 +2802,6 @@ body {
   margin-bottom: 0.75rem;
 }
 
-.menu-card__controles {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-}
-
-.btn-cantidad {
-  width: 32px;
-  height: 32px;
-  border: none;
-  border-radius: 50%;
-  background: var(--hermit-accent);
-  color: #000;
-  font-size: 1rem;
-  font-weight: bold;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-cantidad:hover {
-  transform: scale(1.1);
-  box-shadow: 0 0 15px rgba(124, 255, 90, 0.5);
-}
-
-.menu-card__cantidad {
-  min-width: 30px;
-  text-align: center;
-  font-weight: 600;
-  color: var(--hermit-text-primary);
-}
-
 .menu-vacio,
 .cuenta-vacio {
   text-align: center;

@@ -226,28 +226,15 @@ renderCategorias() {
           <p class="menu-card__descripcion">${receta.descripcion || ""}</p>
           <div class="menu-card__precio">${formatearCOP(receta.precio_venta || 0)}</div>
           <div class="menu-card__costo">Costo: ${formatearCOP(costo)} (${margen}%)</div>
-          <div class="menu-card__controles">
-            <button class="btn-cantidad btn-menos" data-id="${receta.id_receta}">−</button>
-            <span class="menu-card__cantidad" data-id="${receta.id_receta}">0</span>
-            <button class="btn-cantidad btn-mas" data-id="${receta.id_receta}">+</button>
-          </div>
         </div>
       </div>
     `;
   },
 
   bindCardEvents() {
-    document.querySelectorAll(".btn-mas").forEach(btn => {
-      btn.addEventListener("click", (e) => {
-        const id = e.target.dataset.id;
-        this.agregarAlPedido(id, 1);
-      });
-    });
-    
-    document.querySelectorAll(".btn-menos").forEach(btn => {
-      btn.addEventListener("click", (e) => {
-        const id = e.target.dataset.id;
-        this.agregarAlPedido(id, -1);
+    document.querySelectorAll(".menu-card").forEach(card => {
+      card.addEventListener("click", () => {
+        this.agregarAlPedido(card.dataset.id, 1);
       });
     });
   },
@@ -281,22 +268,6 @@ renderCategorias() {
         costo: this.calcularCostoReceta(receta),
         ingredientes: ingredientes
       });
-    }
-
-    this.actualizarContador(recetaId);
-  },
-
-  actualizarContador(recetaId) {
-    if (typeof CuentasManager === 'undefined') return;
-    const cuentaActiva = CuentasManager.getCuentaActiva();
-    if (!cuentaActiva) return;
-    
-    const count = cuentaActiva.items.filter(i => i.receta_id === recetaId)
-      .reduce((sum, i) => sum + i.cantidad, 0);
-    
-    const counter = document.querySelector(`.menu-card__cantidad[data-id="${recetaId}"]`);
-    if (counter) {
-      counter.textContent = count;
     }
   },
 
