@@ -2569,6 +2569,12 @@ function cerrarCuenta(data) {
       : JSON.parse(dataRange[rowIndex][itemsCol] || "[]");
     
     const estadoCol = headers.indexOf("estado");
+    const estadoActual = String(dataRange[rowIndex][estadoCol] || "").toLowerCase();
+    
+    if (estadoActual === "cerrada" || estadoActual === "cancelada") {
+      return { status: "warning", message: "La cuenta ya está " + estadoActual + "." };
+    }
+    
     sheetCuentas.getRange(rowNum, estadoCol + 1).setValue(data.estado || "cerrada");
     if (data.descuento !== undefined) {
       const descCol = headers.indexOf("descuento");

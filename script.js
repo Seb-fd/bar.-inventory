@@ -9137,7 +9137,11 @@ function actualizarTotalesPago() {
   }
 }
 
+let _procesandoPagoCuenta = false;
+
 async function procesarPagoCuenta() {
+  if (_procesandoPagoCuenta) return;
+  
   if (!cuentaPagoActual) {
     if (typeof showToast === "function") {
       showToast("Error: cuenta no encontrada", "error");
@@ -9153,6 +9157,8 @@ async function procesarPagoCuenta() {
     btn.disabled = true;
   }
 
+  _procesandoPagoCuenta = true;
+  
   try {
     const metodoPago = document.getElementById("metodoPagoCuenta").value;
     const subtotal = cuentaPagoActual.total || 0;
@@ -9225,6 +9231,7 @@ async function procesarPagoCuenta() {
       showToast("Error al procesar pago: " + error.message, "error");
     }
   } finally {
+    _procesandoPagoCuenta = false;
     if (btn) {
       btn.innerHTML = originalText;
       btn.disabled = false;
@@ -9232,7 +9239,11 @@ async function procesarPagoCuenta() {
   }
 }
 
+let _procesandoPago = false;
+
 async function procesarPago() {
+  if (_procesandoPago) return;
+  
   const cuenta = CuentasManager.getCuentaActiva();
   if (!cuenta) return;
 
@@ -9244,23 +9255,43 @@ async function procesarPago() {
     return;
   }
 
-  const cambio = montoRecibido - cuenta.total;
-
-  await CuentasManager.cerrarCuenta(cuenta.id_cuenta, {
-    metodo_pago: document.getElementById("metodoPago").value,
-    monto_recibido: montoRecibido,
-    cambio: cambio,
-  });
-
-  if (cuenta.id_mesa) {
-    await FloorPlanManager.actualizarMesaEstado(cuenta.id_mesa, "disponible");
+  const btn = document.getElementById("btnProcesarPago");
+  if (btn) {
+    btn.disabled = true;
+    btn.dataset.originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
   }
 
-  cerrarModalPago();
-  alert("¡Cuenta pagada! Cambio: $" + formatearCOP(cambio));
-  renderCuentasAbiertas();
-  actualizarSelectorCuentas();
-  actualizarPanelCuenta();
+  _procesandoPago = true;
+
+  try {
+    const cambio = montoRecibido - cuenta.total;
+
+    await CuentasManager.cerrarCuenta(cuenta.id_cuenta, {
+      metodo_pago: document.getElementById("metodoPago").value,
+      monto_recibido: montoRecibido,
+      cambio: cambio,
+    });
+
+    if (cuenta.id_mesa) {
+      await FloorPlanManager.actualizarMesaEstado(cuenta.id_mesa, "disponible");
+    }
+
+    cerrarModalPago();
+    alert("¡Cuenta pagada! Cambio: $" + formatearCOP(cambio));
+    renderCuentasAbiertas();
+    actualizarSelectorCuentas();
+    actualizarPanelCuenta();
+  } catch (error) {
+    console.error("Error al procesar pago:", error);
+    alert("Error al procesar el pago. Por favor intente de nuevo.");
+  } finally {
+    _procesandoPago = false;
+    if (btn) {
+      btn.innerHTML = btn.dataset.originalText || "Pagar";
+      btn.disabled = false;
+    }
+  }
 }
 
 // Renderizar cuentas abiertas

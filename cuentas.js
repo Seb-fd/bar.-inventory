@@ -243,18 +243,41 @@ const CuentasManager = {
     const cuenta = this.cuentasAbiertas.find(c => c.id_cuenta === idCuenta);
     if (!cuenta) return { status: "error", message: "Cuenta no encontrada" };
 
-    const itemsParaDescontar = cuenta.items.map(item => ({
-      tipo: item.tipo,
-      producto_id: item.producto_id,
-      receta_id: item.receta_id,
-      cantidad: item.cantidad,
-      cantidad_oz: item.cantidad_oz
-    }));
+    if (cuenta.estado === "cerrada" || cuenta.estado === "cerrando") {
+      return { status: "warning", message: "La cuenta ya está en proceso de cierre o está cerrada" };
+    }
+
+    cuenta.estado = "cerrando";
+    this.guardarEnLocalStorage();
 
     try {
-      await descontarInventarioPorVenta(itemsParaDescontar);
+      const result = await callGoogleScript("cerrarCuenta", {
+        id_cuenta: idCuenta,
+        estado: "cerrada",
+        descuento: cuenta.descuento,
+        items: cuenta.items,
+        nombre_mesa: cuenta.nombre_mesa,
+        forma_pago: datosPago?.metodo_pago || "efectivo",
+        monto_recibido: datosPago?.monto_recibido || 0,
+        cambio: datosPago?.cambio || 0
+      });
+
+      if (result.status === "warning" && result.message.includes("ya")) {
+        cuenta.estado = "cerrada";
+        this.guardarEnLocalStorage();
+        return result;
+      }
+
+      if (result.status !== "success") {
+        cuenta.estado = "abierta";
+        this.guardarEnLocalStorage();
+        return { status: "error", message: result.message || "Error al cerrar cuenta en el servidor" };
+      }
     } catch (e) {
-      console.error("Error descontando inventario:", e);
+      cuenta.estado = "abierta";
+      this.guardarEnLocalStorage();
+      console.log("Error cerrando cuenta:", e.message);
+      return { status: "error", message: "Error de conexión: " + e.message };
     }
 
     cuenta.estado = "cerrada";
@@ -264,21 +287,6 @@ const CuentasManager = {
     cuenta.cierre = new Date().toISOString();
 
     this.guardarEnLocalStorage();
-
-    try {
-      await callGoogleScript("cerrarCuenta", {
-        id_cuenta: idCuenta,
-        estado: "cerrada",
-        descuento: cuenta.descuento,
-        items: cuenta.items,
-        nombre_mesa: cuenta.nombre_mesa,
-        forma_pago: cuenta.forma_pago,
-        monto_recibido: cuenta.monto_recibido,
-        cambio: cuenta.cambio
-      });
-    } catch (e) {
-      console.log("Cuenta cerrada localmente:", e.message);
-    }
 
     if (this.cuentaActiva === idCuenta) {
       this.cuentaActiva = null;
