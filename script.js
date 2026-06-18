@@ -10074,6 +10074,7 @@ function cerrarModalNuevoProducto() {
 
   const btnGuardar = document.getElementById("btnGuardarProducto");
   if (btnGuardar) {
+    btnGuardar.disabled = false;
     btnGuardar.innerHTML = '<i class="fas fa-save"></i> Guardar Producto';
     btnGuardar.onclick = guardarNuevoProducto;
   }
@@ -10094,6 +10095,7 @@ function abrirModalEditarProducto(producto) {
   document.getElementById("np_titulo").innerHTML = '<i class="fas fa-edit"></i> Editar Producto';
 
   const btn = document.getElementById("btnGuardarProducto");
+  btn.disabled = false;
   btn.innerHTML = '<i class="fas fa-save"></i> Actualizar Producto';
   btn.onclick = guardarProductoEditado;
 
