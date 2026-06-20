@@ -356,7 +356,7 @@ const CuentasManager = {
   },
 
   async obtenerResumenDia() {
-    const hoy = new Date().toISOString().split("T")[0];
+    const hoy = toBusinessDateISO();
     
     try {
       const result = await callGoogleScript("obtenerCuentas", { estado: "cerrada" });
@@ -364,7 +364,7 @@ const CuentasManager = {
       if (result.status === "success" && result.data) {
         const cuentasCerradas = result.data.filter(c => {
           const fecha = c.inicio || "";
-          return fecha.startsWith(hoy);
+          return toBusinessDateISO(fecha) === hoy;
         });
         
         const totalVentas = cuentasCerradas.reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0);
@@ -380,7 +380,7 @@ const CuentasManager = {
     }
     
     const cuentasCerradas = this.cuentasAbiertas.filter(c => 
-      c.estado === "cerrada" && c.cierre && c.cierre.startsWith(hoy)
+      c.estado === "cerrada" && c.cierre && toBusinessDateISO(c.cierre) === hoy
     );
     
     return {

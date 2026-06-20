@@ -1454,6 +1454,16 @@ function registrarCompraPOS(data) {
   };
 }
 
+// Returns the business date (before 5PM = previous day) for bar hours (5PM-4:59AM)
+function getBusinessDate() {
+  const now = new Date();
+  if (now.getHours() < 17) {
+    now.setDate(now.getDate() - 1);
+  }
+  now.setHours(0, 0, 0, 0);
+  return now;
+}
+
 function actualizarResumenDiario(
   totalFinal,
   items,
@@ -1470,8 +1480,7 @@ function actualizarResumenDiario(
       return;
     }
 
-    const hoy = new Date();
-    hoy.setHours(0, 0, 0, 0);
+    const hoy = getBusinessDate();
 
     const data = sheetResumen.getDataRange().getValues();
     const headers = data[0];

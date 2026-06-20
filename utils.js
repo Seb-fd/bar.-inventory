@@ -441,6 +441,25 @@ function initOfflineSupport() {
   }
 }
 
+function toLocalDateISO(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+// Business date: bars operate 5PM-4:59AM (dates before 5PM belong to previous business day)
+function toBusinessDateISO(dateStr) {
+  // Date-only strings (no time component) return as-is
+  if (dateStr && !dateStr.includes('T')) return dateStr;
+  const d = dateStr ? new Date(dateStr) : new Date();
+  if (isNaN(d.getTime())) return dateStr;
+  if (d.getHours() < 17) {
+    d.setDate(d.getDate() - 1);
+  }
+  return toLocalDateISO(d);
+}
+
 // Export utilities (for browsers, attach to window)
 window.utils = {
   MOBILE_BREAKPOINT,
@@ -452,6 +471,7 @@ window.utils = {
   cleanNumber,
   formatConsecutive,
   debounce,
+  toBusinessDateISO,
   // Offline support - Ventas
   saveVentaOffline,
   getVentasOffline,

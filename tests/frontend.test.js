@@ -245,6 +245,100 @@
       'Sin datos en rango retorna array vacío',
       `Resultados: ${result.length}`
     );
+
+    // useBusinessDate=false mantiene comportamiento original (backward compat)
+    result = filterByDate(datos, '2024-01-15', null, 'fecha', false);
+    FrontendTestRunner.assert(
+      result.length === 3,
+      'useBusinessDate=false mantiene backward compatibility',
+      `Resultados: ${result.length}`
+    );
+  }
+
+  function testFilterByDateBusinessDate() {
+    console.log('\n🧪 PRUEBAS: filterByDate() con useBusinessDate=true');
+    console.log('-'.repeat(50));
+
+    // Fechas con timestamp: 2AM del día siguiente pertenece al negocio del día anterior
+    const datos = [
+      { fecha: '2024-06-20T18:00:00', valor: 100 },  // 6PM Jun 20 -> negocio Jun 20
+      { fecha: '2024-06-21T02:00:00', valor: 200 },  // 2AM Jun 21 -> negocio Jun 20
+      { fecha: '2024-06-21T17:00:00', valor: 300 },  // 5PM Jun 21 -> negocio Jun 21
+      { fecha: '2024-06-22T01:00:00', valor: 400 },  // 1AM Jun 22 -> negocio Jun 21
+    ];
+
+    // Filtrar por negocio Jun 20 (debe incluir items 0 y 1)
+    let result = filterByDate(datos, '2024-06-20', '2024-06-20', 'fecha', true);
+    FrontendTestRunner.assert(
+      result.length === 2,
+      'useBusinessDate=true: negocio Jun 20 incluye 6PM y 2AM',
+      `Resultados: ${result.length}`
+    );
+
+    // Filtrar por negocio Jun 21 (debe incluir items 2 y 3)
+    result = filterByDate(datos, '2024-06-21', '2024-06-21', 'fecha', true);
+    FrontendTestRunner.assert(
+      result.length === 2,
+      'useBusinessDate=true: negocio Jun 21 incluye 5PM y 1AM siguiente',
+      `Resultados: ${result.length}`
+    );
+
+    // useBusinessDate=false usa fecha calendario (extrae YYYY-MM-DD sin conversión)
+    const datosCal = [
+      { fecha: '2024-06-20', valor: 100 },
+      { fecha: '2024-06-21', valor: 200 },
+    ];
+    result = filterByDate(datosCal, '2024-06-20', '2024-06-20', 'fecha', false);
+    FrontendTestRunner.assert(
+      result.length === 1,
+      'useBusinessDate=false: calendario Jun 20 solo coincide con Jun 20',
+      `Resultados: ${result.length}`
+    );
+  }
+
+  function testToBusinessDateISO() {
+    console.log('\n🧪 PRUEBAS: toBusinessDateISO()');
+    console.log('-'.repeat(50));
+
+    // 6PM -> mismo día
+    let bd = toBusinessDateISO('2024-06-20T18:00:00');
+    FrontendTestRunner.assert(
+      bd === '2024-06-20',
+      '6PM pertenece al mismo día',
+      `Resultado: ${bd}`
+    );
+
+    // 2AM -> día anterior
+    bd = toBusinessDateISO('2024-06-21T02:00:00');
+    FrontendTestRunner.assert(
+      bd === '2024-06-20',
+      '2AM pertenece al día anterior',
+      `Resultado: ${bd}`
+    );
+
+    // 4:59AM -> día anterior
+    bd = toBusinessDateISO('2024-06-21T04:59:00');
+    FrontendTestRunner.assert(
+      bd === '2024-06-20',
+      '4:59AM pertenece al día anterior',
+      `Resultado: ${bd}`
+    );
+
+    // 5PM -> mismo día
+    bd = toBusinessDateISO('2024-06-20T17:00:00');
+    FrontendTestRunner.assert(
+      bd === '2024-06-20',
+      '5PM pertenece al mismo día',
+      `Resultado: ${bd}`
+    );
+
+    // Sin argumento (hoy) - solo verificar que retorna string no vacío
+    bd = toBusinessDateISO();
+    FrontendTestRunner.assert(
+      typeof bd === 'string' && bd.length === 10,
+      'toBusinessDateISO() sin args retorna YYYY-MM-DD',
+      `Resultado: ${bd}`
+    );
   }
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -580,6 +674,8 @@
     console.log('='.repeat(60));
 
     testFilterByDate();
+    testFilterByDateBusinessDate();
+    testToBusinessDateISO();
     testFormatearCOP();
     testLimpiarNumero();
     testGenerarIDUnico();

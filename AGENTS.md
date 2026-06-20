@@ -48,6 +48,16 @@ id, nombre, código, categoría, precio_compra, precio_venta, precio_venta_2, pr
 - Inventory cached in localStorage (24h TTL)
 - Offline indicator shows pending count: `updateOfflineIndicator()`
 
+## Business Date (5PM Cutoff)
+The system uses a "business date" that starts at 5PM (bar opens). A transaction at 2AM belongs to the previous day's business session.
+
+- **Frontend**: `toBusinessDateISO(dateStr)` in `utils.js` — converts any date to its business date (YYYY-MM-DD)
+- **Backend**: `getBusinessDate()` in `sg.js` — same logic for Google Apps Script
+- **Dashboard**: Ranges "hoy", "semana", "mes" all use business date
+- **Cierres**: `prepararCierreCaja()` filters by business date
+
+**IMPORTANT**: Google Apps Script project timezone must be set to `America/Bogota` (GMT-5) in `File > Project settings > Time zone` for `getBusinessDate()` to work correctly.
+
 ## Common Issues
 - **Old data**: Clear localStorage before testing new sheet
 - **callGoogleScript not defined**: Ensure utils.js loads before script.js in HTML (verified correct in index.html)

@@ -962,26 +962,31 @@ function handleDashboardRangoChange() {
   const rangoSelect = document.getElementById("dashboardRango");
   if (!rangoSelect) return;
   const rango = rangoSelect.value;
-  const hoy = new Date();
   let fechaInicio, fechaFin;
 
   switch (rango) {
     case "hoy":
-      fechaInicio = hoy.toISOString().split("T")[0];
-      fechaFin = hoy.toISOString().split("T")[0];
+      fechaInicio = toBusinessDateISO();
+      fechaFin = toBusinessDateISO();
       break;
-    case "semana":
-      const inicioSemana = new Date(hoy);
-      inicioSemana.setDate(hoy.getDate() - hoy.getDay());
-      fechaInicio = inicioSemana.toISOString().split("T")[0];
-      fechaFin = hoy.toISOString().split("T")[0];
+    case "semana": {
+      const hoyNegocio = new Date();
+      if (hoyNegocio.getHours() < 17) hoyNegocio.setDate(hoyNegocio.getDate() - 1);
+      const inicioSemana = new Date(hoyNegocio);
+      inicioSemana.setDate(hoyNegocio.getDate() - hoyNegocio.getDay());
+      fechaInicio = toLocalDateISO(inicioSemana);
+      fechaFin = toBusinessDateISO();
       break;
-    case "mes":
-      fechaInicio = new Date(hoy.getFullYear(), hoy.getMonth(), 1)
+    }
+    case "mes": {
+      const hoyNegocioMes = new Date();
+      if (hoyNegocioMes.getHours() < 17) hoyNegocioMes.setDate(hoyNegocioMes.getDate() - 1);
+      fechaInicio = new Date(hoyNegocioMes.getFullYear(), hoyNegocioMes.getMonth(), 1)
         .toISOString()
         .split("T")[0];
-      fechaFin = hoy.toISOString().split("T")[0];
+      fechaFin = toBusinessDateISO();
       break;
+    }
   }
 
   document.getElementById("dashFechaInicio").value = fechaInicio;
@@ -989,7 +994,7 @@ function handleDashboardRangoChange() {
   aplicarFiltroDashboard();
 }
 
-async function calcularResumenFinanciero(fechaInicio = null, fechaFin = null) {
+async function calcularResumenFinanciero(fechaInicio = null, fechaFin = null, useBusinessDate = true) {
   displayStatus("statusDashboard", "info", "Calculando resumen financiero...");
 
   try {
@@ -1019,6 +1024,7 @@ async function calcularResumenFinanciero(fechaInicio = null, fechaFin = null) {
         fechaInicio,
         fechaFin,
         "fecha",
+        useBusinessDate,
       );
       totalGastos = filteredGastos.reduce(
         (sum, g) => sum + Number(g.monto || 0),
@@ -1043,6 +1049,7 @@ async function calcularResumenFinanciero(fechaInicio = null, fechaFin = null) {
         fechaInicio,
         fechaFin,
         "fecha",
+        useBusinessDate,
       );
       totalAprovechamientos = filteredAprovechos.reduce(
         (sum, a) => sum + Number(a.monto || 0),
@@ -1068,6 +1075,7 @@ async function calcularResumenFinanciero(fechaInicio = null, fechaFin = null) {
         fechaInicio,
         fechaFin,
         "fecha",
+        useBusinessDate,
       );
       totalComprasFacturadas = filteredCompras.reduce(
         (sum, c) => sum + Number(c.total_final || 0),
@@ -1151,6 +1159,7 @@ async function calcularResumenFinanciero(fechaInicio = null, fechaFin = null) {
           fechaInicio,
           fechaFin,
           "fecha",
+          useBusinessDate,
         );
         filteredVentas.forEach((v) => {
           const valIng = String(v.ingresado || "").toUpperCase();
@@ -1237,20 +1246,16 @@ async function calcularResumenFinanciero(fechaInicio = null, fechaFin = null) {
   }
 }
 
-function filterByDate(data, fechaInicio, fechaFin, dateField) {
+function filterByDate(data, fechaInicio, fechaFin, dateField, useBusinessDate = false) {
   if (!fechaInicio && !fechaFin) return data;
 
   return data.filter((item) => {
     if (!item[dateField]) return false;
-    const itemDate = new Date(item[dateField]);
-    const fechaIni = fechaInicio ? new Date(fechaInicio) : null;
-    const fechaFn = fechaFin ? new Date(fechaFin) : null;
-
-    if (fechaFn) fechaFn.setHours(23, 59, 59, 999);
-
-    if (fechaIni && fechaFn) return itemDate >= fechaIni && itemDate <= fechaFn;
-    else if (fechaIni) return itemDate >= fechaIni;
-    else if (fechaFn) return itemDate <= fechaFn;
+    const itemDateStr = useBusinessDate
+      ? toBusinessDateISO(item[dateField])
+      : String(item[dateField]).split("T")[0];
+    if (fechaInicio && itemDateStr < fechaInicio) return false;
+    if (fechaFin && itemDateStr > fechaFin) return false;
     return true;
   });
 }
@@ -5778,7 +5783,7 @@ let cierreActual = {
 async function prepararCierreCaja() {
   mostrarLoading("Preparando datos de cierre...");
   try {
-    const hoyISO = new Date().toISOString().split("T")[0];
+    const hoyNegocio = toBusinessDateISO();
     const [ventasData, gastosData, aprovechosData] = await Promise.all([
       utils.fetchJson(`${SCRIPT_URL}?action=getData&sheetName=VENTAS`),
       utils.fetchJson(`${SCRIPT_URL}?action=getData&sheetName=GASTOS`),
@@ -5797,11 +5802,11 @@ async function prepararCierreCaja() {
     // Calcular ventas del día (solo las conciliadas)
     if (ventasData.status === "success" && ventasData.data) {
       ventasData.data.forEach((v) => {
-        const fechaVentaISO = new Date(v.fecha).toISOString().split("T")[0];
+        const fechaVentaNegocio = toBusinessDateISO(v.fecha);
         const isIngresado =
           v.ingresado === true || String(v.ingresado).toUpperCase() === "TRUE";
 
-        if (fechaVentaISO === hoyISO && isIngresado) {
+        if (fechaVentaNegocio === hoyNegocio && isIngresado) {
           const total = parseFloat(v.total_final) || 0;
           const metodo = String(v.metodo_pago || "").toLowerCase();
 
@@ -5818,8 +5823,8 @@ async function prepararCierreCaja() {
     // Calcular gastos del día por método de pago
     if (gastosData.status === "success" && gastosData.data) {
       gastosData.data.forEach((g) => {
-        const fechaGastoISO = new Date(g.fecha).toISOString().split("T")[0];
-        if (fechaGastoISO === hoyISO) {
+        const fechaGastoNegocio = toBusinessDateISO(g.fecha);
+        if (fechaGastoNegocio === hoyNegocio) {
           const monto = parseFloat(g.monto) || 0;
           const metodo = String(g.metodo_pago || "").toLowerCase();
 
@@ -5836,8 +5841,8 @@ async function prepararCierreCaja() {
     // Calcular aprovechamientos del día por método de pago
     if (aprovechosData.status === "success" && aprovechosData.data) {
       aprovechosData.data.forEach((a) => {
-        const fechaAprovechoISO = new Date(a.fecha).toISOString().split("T")[0];
-        if (fechaAprovechoISO === hoyISO) {
+        const fechaAprovechoNegocio = toBusinessDateISO(a.fecha);
+        if (fechaAprovechoNegocio === hoyNegocio) {
           const monto = parseFloat(a.monto) || 0;
           const metodo = String(a.metodo_pago || "").toLowerCase();
 
