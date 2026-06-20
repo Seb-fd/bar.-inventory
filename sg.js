@@ -493,6 +493,8 @@ function doPost(e) {
       result = agregarCategoria(requestData);
     } else if (action === "agregarProducto") {
       result = agregarProducto(requestData);
+    } else if (action === "actualizarProducto") {
+      result = actualizarProducto(requestData);
     } else if (action === "registrarTransaccion") {
       result = registrarTransaccion(requestData);
     } else if (action === "registrarVentaPOS") {
@@ -763,6 +765,87 @@ function agregarProducto(data) {
       status: "error",
       message: `Error al escribir producto: ${e.message}`,
     };
+  }
+}
+
+function actualizarProducto(data) {
+  try {
+    if (!data || !data.id) {
+      return { status: "error", message: "ID del producto es requerido." };
+    }
+
+    const ss = getSpreadsheet();
+    const sheet = ss.getSheetByName(HOJA_PRODUCTOS);
+    if (!sheet) {
+      return { status: "error", message: "Hoja de productos no encontrada." };
+    }
+
+    const dataRange = sheet.getDataRange().getValues();
+    const headers = dataRange[0];
+    const idIndex = headers.indexOf("id");
+    if (idIndex === -1) {
+      return { status: "error", message: "Columna 'id' no encontrada." };
+    }
+
+    const rowIndex = dataRange.findIndex(
+      (row, i) => i > 0 && String(row[idIndex]) === String(data.id)
+    );
+    if (rowIndex === -1) {
+      return { status: "error", message: "Producto no encontrado." };
+    }
+    const rowNum = rowIndex + 1;
+
+    const camposEditables = [
+      "categoría",
+      "volumen_ml",
+      "contenido_oz",
+      "precio_botella",
+      "precio_onza",
+      "precio_ml",
+      "precio_venta",
+      "precio_venta_2",
+      "precio_venta_3",
+      "precio_venta_4",
+      "stock"
+    ];
+
+    camposEditables.forEach((campo) => {
+      if (data[campo] !== undefined) {
+        const colIdx = headers.indexOf(campo);
+        if (colIdx !== -1) {
+          let valor = data[campo];
+          if (["volumen_ml", "contenido_oz", "precio_botella", "precio_onza",
+               "precio_ml", "precio_venta", "precio_venta_2",
+               "precio_venta_3", "precio_venta_4", "stock"].includes(campo)) {
+            valor = campo === "stock" ? parseInt(valor) || 0 : parseFloat(valor) || 0;
+          }
+          sheet.getRange(rowNum, colIdx + 1).setValue(valor);
+        }
+      }
+    });
+
+    if (data.precio_botella !== undefined) {
+      const pb = parseFloat(data.precio_botella) || 0;
+      const co = data.contenido_oz !== undefined
+        ? parseFloat(data.contenido_oz) || 0
+        : parseFloat(dataRange[rowIndex][headers.indexOf("contenido_oz")]) || 0;
+      const vm = data.volumen_ml !== undefined
+        ? parseFloat(data.volumen_ml) || 0
+        : parseFloat(dataRange[rowIndex][headers.indexOf("volumen_ml")]) || 0;
+
+      if (co > 0) {
+        const colIdx = headers.indexOf("precio_onza");
+        if (colIdx !== -1) sheet.getRange(rowNum, colIdx + 1).setValue(pb / co);
+      }
+      if (vm > 0) {
+        const colIdx = headers.indexOf("precio_ml");
+        if (colIdx !== -1) sheet.getRange(rowNum, colIdx + 1).setValue(pb / vm);
+      }
+    }
+
+    return { status: "success", message: "Producto actualizado correctamente." };
+  } catch (e) {
+    return { status: "error", message: e.message };
   }
 }
 
@@ -2336,7 +2419,7 @@ function abrirCuenta(data) {
       sheet = ss.insertSheet(HOJA_CUENTAS);
       sheet.appendRow(CUENTAS_HEADERS);
     }
-    const id_cuenta = "CTA-" + (new Date().getTime().toString(36) + Math.random().toString(36).substring(2, 9)).toUpperCase();
+    const id_cuenta = data.id_cuenta || "CTA-" + (new Date().getTime().toString(36) + Math.random().toString(36).substring(2, 9)).toUpperCase();
     const now = new Date();
     const rowData = [
       id_cuenta,
@@ -2417,6 +2500,10 @@ function cerrarCuenta(data) {
       : JSON.parse(dataRange[rowIndex][itemsCol] || "[]");
     
     const estadoCol = headers.indexOf("estado");
+    const estadoActual = String(dataRange[rowIndex][estadoCol] || "").toLowerCase();
+    if (estadoActual === "cerrada" || estadoActual === "cancelada") {
+      return { status: "warning", message: "La cuenta ya está " + estadoActual + "." };
+    }
     sheetCuentas.getRange(rowNum, estadoCol + 1).setValue(data.estado || "cerrada");
     if (data.descuento !== undefined) {
       const descCol = headers.indexOf("descuento");
