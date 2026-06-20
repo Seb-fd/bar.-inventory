@@ -161,10 +161,6 @@ const VENTAS_DETALLE_HEADERS = [
 // HEADERS PARA EL BAR - THE HERMIT COCKTAIL BAR
 // ================================================================
 
-// ================================================================
-// HEADERS PARA EL BAR - THE HERMIT COCKTAIL BAR
-// ================================================================
-
 const PRODUCTOS_BAR_HEADERS = [
   "id",
   "nombre",
@@ -177,6 +173,8 @@ const PRODUCTOS_BAR_HEADERS = [
   "precio_ml",
   "precio_venta",
   "precio_venta_2",
+  "precio_venta_3",
+  "precio_venta_4",
   "stock",
   "fecha_creado",
 ];
@@ -493,11 +491,9 @@ function doPost(e) {
     }
     if (action === "agregarCategoria") {
       result = agregarCategoria(requestData);
-} else if (action === "agregarProducto") {
-    result = agregarProducto(requestData);
-  } else if (action === "actualizarProducto") {
-    result = actualizarProducto(requestData);
-  } else if (action === "registrarTransaccion") {
+    } else if (action === "agregarProducto") {
+      result = agregarProducto(requestData);
+    } else if (action === "registrarTransaccion") {
       result = registrarTransaccion(requestData);
     } else if (action === "registrarVentaPOS") {
       result = registrarVentaPOS(requestData);
@@ -550,8 +546,6 @@ function doPost(e) {
       result = obtenerProductos();
     } else if (action === "obtenerCuentas") {
       result = obtenerCuentas(requestData.estado);
-    } else if (action === "obtenerResumenDia") {
-      result = obtenerResumenDia();
     } else if (action === "obtenerZonas") {
       result = obtenerZonas();
     } else if (action === "obtenerMesas") {
@@ -730,6 +724,16 @@ function agregarProducto(data) {
       ? parseFloat(data.precio_venta_2)
       : precioVentaBase;
 
+  const precioVenta3 =
+    data.precio_venta_3 !== undefined && data.precio_venta_3 !== ""
+      ? parseFloat(data.precio_venta_3)
+      : precioVentaBase;
+
+  const precioVenta4 =
+    data.precio_venta_4 !== undefined && data.precio_venta_4 !== ""
+      ? parseFloat(data.precio_venta_4)
+      : precioVentaBase;
+
   const newRow = [
     newId,
     data.nombre,
@@ -742,7 +746,9 @@ function agregarProducto(data) {
     parseFloat(data.precio_ml) || 0,
     precioVentaBase,
     precioVenta2,
-    parseFloat(data.stock) || 0,
+    precioVenta3,
+    precioVenta4,
+    parseInt(data.stock) || 0,
     new Date(),
   ];
 
@@ -757,84 +763,6 @@ function agregarProducto(data) {
       status: "error",
       message: `Error al escribir producto: ${e.message}`,
     };
-  }
-}
-
-function actualizarProducto(data) {
-  try {
-    if (!data || !data.id) {
-      return { status: "error", message: "ID del producto es requerido." };
-    }
-
-    const ss = getSpreadsheet();
-    const sheet = ss.getSheetByName(HOJA_PRODUCTOS);
-    if (!sheet) {
-      return { status: "error", message: "Hoja de productos no encontrada." };
-    }
-
-    const dataRange = sheet.getDataRange().getValues();
-    const headers = dataRange[0];
-    const idIndex = headers.indexOf("id");
-    if (idIndex === -1) {
-      return { status: "error", message: "Columna 'id' no encontrada." };
-    }
-
-    const rowIndex = dataRange.findIndex(
-      (row, i) => i > 0 && String(row[idIndex]) === String(data.id)
-    );
-    if (rowIndex === -1) {
-      return { status: "error", message: "Producto no encontrado." };
-    }
-    const rowNum = rowIndex + 1;
-
-    const camposEditables = [
-      "categoría",
-      "volumen_ml",
-      "contenido_oz",
-      "precio_botella",
-      "precio_onza",
-      "precio_ml",
-      "precio_venta",
-      "precio_venta_2",
-      "stock"
-    ];
-
-    camposEditables.forEach((campo) => {
-      if (data[campo] !== undefined) {
-        const colIdx = headers.indexOf(campo);
-        if (colIdx !== -1) {
-          let valor = data[campo];
-          if (["volumen_ml", "contenido_oz", "precio_botella", "precio_onza",
-               "precio_ml", "precio_venta", "precio_venta_2", "stock"].includes(campo)) {
-            valor = parseFloat(valor) || 0;
-          }
-          sheet.getRange(rowNum, colIdx + 1).setValue(valor);
-        }
-      }
-    });
-
-    if (data.precio_botella !== undefined) {
-      const pb = parseFloat(data.precio_botella) || 0;
-      const co = data.contenido_oz !== undefined
-        ? parseFloat(data.contenido_oz) || 0
-        : parseFloat(dataRange[rowIndex][headers.indexOf("contenido_oz")]) || 0;
-      const vm = data.volumen_ml !== undefined
-        ? parseFloat(data.volumen_ml) || 0
-        : parseFloat(dataRange[rowIndex][headers.indexOf("volumen_ml")]) || 0;
-
-      if (co > 0) {
-        const colIdx = headers.indexOf("precio_onza");
-        if (colIdx !== -1) sheet.getRange(rowNum, colIdx + 1).setValue(pb / co);
-      }
-      if (vm > 0) {
-        const colIdx = headers.indexOf("precio_ml");
-        if (colIdx !== -1) sheet.getRange(rowNum, colIdx + 1).setValue(pb / vm);
-      }
-    }
-
-    return { status: "success", message: "Producto actualizado correctamente." };
-  } catch (e) {
-    return { status: "error", message: e.message };
   }
 }
 
@@ -1039,9 +967,6 @@ function registrarVentaPOS(data) {
         nombre: productosData[i][nombreCol] || "",
         codigo: productosData[i][codigoCol] || "",
         stock: parseFloat(productosData[i][stockCol]) || 0,
-        volumenMl: parseFloat(
-          productosData[i][headers.indexOf("volumen_ml")]
-        ) || 750,
       };
     }
   }
@@ -1066,16 +991,15 @@ function registrarVentaPOS(data) {
     }
 
     const stockActual = producto.stock;
-    const volumenMl = producto.volumenMl;
 
-    if (stockActual < cantidad * volumenMl) {
+    if (stockActual < cantidad) {
       return {
         status: "warning",
-        message: `Stock insuficiente para ${producto.nombre || productoId}. Disponible: ${stockActual} ml (${(stockActual / volumenMl).toFixed(1)} botellas)`,
+        message: `Stock insuficiente para ${producto.nombre || productoId}. Disponible: ${stockActual}`,
       };
     }
 
-    const nuevoStock = stockActual - cantidad * volumenMl;
+    const nuevoStock = stockActual - cantidad;
     updatesStock.push({ rowIndex: producto.rowIndex, nuevoStock });
 
     const descuentoItemPct = Number(item.descuento_item_pct) || 0;
@@ -1311,9 +1235,6 @@ function registrarCompraPOS(data) {
         nombre: productosData[i][nombreCol] || "",
         codigo: productosData[i][codigoCol] || "",
         stock: parseFloat(productosData[i][stockCol]) || 0,
-        volumenMl: parseFloat(
-          productosData[i][headers.indexOf("volumen_ml")]
-        ) || 750,
       };
     }
   }
@@ -1337,7 +1258,7 @@ function registrarCompraPOS(data) {
       };
     }
 
-    const nuevoStock = producto.stock + cantidad * producto.volumenMl;
+    const nuevoStock = producto.stock + cantidad;
     updatesStock.push({ rowIndex: producto.rowIndex, nuevoStock });
 
     const subtotalItem = cantidad * precio;
@@ -2273,38 +2194,23 @@ function calcularCostoReceta(ingredientes) {
     const dataProductos = sheetProductos.getDataRange().getValues();
     const headers = dataProductos[0];
     const idCol = headers.indexOf("id");
-    const nombreCol = headers.indexOf("nombre");
     const precioBotellaCol = headers.indexOf("precio_botella");
     const contenidoOzCol = headers.indexOf("contenido_oz");
     if (idCol === -1 || precioBotellaCol === -1 || contenidoOzCol === -1) return 0;
 
     const productoMap = {};
-    const productoPorNombre = {};
     for (let i = 1; i < dataProductos.length; i++) {
       const pid = String(dataProductos[i][idCol]);
-      const nombre = String(dataProductos[i][nombreCol] || "").toLowerCase().trim();
       const precioBotella = parseFloat(dataProductos[i][precioBotellaCol]) || 0;
       const contenidoOz = parseFloat(dataProductos[i][contenidoOzCol]) || 0;
       if (precioBotella > 0 && contenidoOz > 0) {
         productoMap[pid] = precioBotella / contenidoOz;
-        if (nombre) productoPorNombre[nombre] = precioBotella / contenidoOz;
       }
     }
 
     let costo = 0;
     ingredientes.forEach((ing) => {
-      let costoPorOz = productoMap[String(ing.producto_id)];
-      
-      if (!costoPorOz && ing.nombre_producto) {
-        const nombreBusqueda = String(ing.nombre_producto).toLowerCase().trim();
-        costoPorOz = productoPorNombre[nombreBusqueda];
-      }
-      
-      if (!costoPorOz && ing.nombre) {
-        const nombreBusqueda = String(ing.nombre).toLowerCase().trim();
-        costoPorOz = productoPorNombre[nombreBusqueda];
-      }
-      
+      const costoPorOz = productoMap[String(ing.producto_id)];
       if (costoPorOz) {
         costo += costoPorOz * (parseFloat(ing.cantidad_oz) || 0);
       }
@@ -2422,63 +2328,6 @@ function obtenerCuentas(estado) {
   }
 }
 
-function obtenerResumenDia() {
-  try {
-    const ss = getSpreadsheet();
-    let sheet = ss.getSheetByName(HOJA_VENTAS);
-    if (!sheet) {
-      return { status: "success", data: { totalVentas: 0, totalCuentas: 0, ticketPromedio: 0 } };
-    }
-    
-    const data = sheet.getDataRange().getValues();
-    if (data.length <= 1) {
-      return { status: "success", data: { totalVentas: 0, totalCuentas: 0, ticketPromedio: 0 } };
-    }
-    
-    const headers = data[0];
-    const fechaIndex = headers.indexOf("fecha");
-    const totalIndex = headers.indexOf("total_final");
-    const ingresoIndex = headers.indexOf("ingresado");
-    
-    if (fechaIndex === -1 || totalIndex === -1) {
-      return { status: "success", data: { totalVentas: 0, totalCuentas: 0, ticketPromedio: 0 } };
-    }
-    
-    const hoy = new Date();
-    const hoyStr = hoy.toISOString().split("T")[0];
-    
-    let totalVentas = 0;
-    let totalCuentas = 0;
-    
-    for (let i = 1; i < data.length; i++) {
-      const row = data[i];
-      const fecha = row[fechaIndex];
-      const total = parseFloat(row[totalIndex]) || 0;
-      const ingestado = ingresoIndex !== -1 ? String(row[ingresadoIndex]).toUpperCase() : "TRUE";
-      
-      if (!fecha) continue;
-      
-      const fechaStr = new Date(fecha).toISOString().split("T")[0];
-      
-      if (fechaStr === hoyStr && ingestado !== "FALSE") {
-        totalVentas += total;
-        totalCuentas++;
-      }
-    }
-    
-    return {
-      status: "success",
-      data: {
-        totalVentas,
-        totalCuentas,
-        ticketPromedio: totalCuentas > 0 ? totalVentas / totalCuentas : 0
-      }
-    };
-  } catch (e) {
-    return { status: "error", message: e.message };
-  }
-}
-
 function abrirCuenta(data) {
   try {
     const ss = getSpreadsheet();
@@ -2487,8 +2336,7 @@ function abrirCuenta(data) {
       sheet = ss.insertSheet(HOJA_CUENTAS);
       sheet.appendRow(CUENTAS_HEADERS);
     }
-    // Usar el ID que nos mandan, o generar uno nuevo si no existe
-    const id_cuenta = data.id_cuenta || "CTA-" + (new Date().getTime().toString(36) + Math.random().toString(36).substring(2, 9)).toUpperCase();
+    const id_cuenta = "CTA-" + (new Date().getTime().toString(36) + Math.random().toString(36).substring(2, 9)).toUpperCase();
     const now = new Date();
     const rowData = [
       id_cuenta,
@@ -2569,12 +2417,6 @@ function cerrarCuenta(data) {
       : JSON.parse(dataRange[rowIndex][itemsCol] || "[]");
     
     const estadoCol = headers.indexOf("estado");
-    const estadoActual = String(dataRange[rowIndex][estadoCol] || "").toLowerCase();
-    
-    if (estadoActual === "cerrada" || estadoActual === "cancelada") {
-      return { status: "warning", message: "La cuenta ya está " + estadoActual + "." };
-    }
-    
     sheetCuentas.getRange(rowNum, estadoCol + 1).setValue(data.estado || "cerrada");
     if (data.descuento !== undefined) {
       const descCol = headers.indexOf("descuento");
@@ -2810,4 +2652,266 @@ function obtenerRecetaPorId(id_receta) {
   } catch (e) {
     return { status: "error", message: e.message };
   }
+}
+
+// ================================================================================
+// LIMPIEZA DE VENTAS DUPLICADAS - THE HERMIT COCKTAIL BAR
+// ================================================================================
+//
+// IDENTIFICACIÓN DE DUPLICADOS (confirmada con datos del usuario):
+// - Consecutivo 4 y 5:   mesa 4,    163800,  9/5  2:06-2:07
+// - Consecutivo 8 y 9:   mesa 6,    231200,  9/5  2:24-2:24
+// - Consecutivo 11 y 12: mesa 4,    309300,  10/5 1:05-1:05
+// - Consecutivo 17 y 18: mesa ivan, 342400,  16/5 2:22-2:22
+// - Consecutivo 31 y 32: mesa ivan, 552200,  24/5 0:49-0:50
+// - Consecutivo 33 y 34: mesa 1,    575700,  24/5 1:13-1:13
+//
+// ID a ELIMINAR (segundo de cada par - se conservará el primero):
+//   id-MOY046G46SW613H  (Cons 5)
+//   id-MOY0QSFJA6U9B0L  (Cons 9)
+//   id-MOZDCohenJ6XXSO  (Cons 12) *** VERIFICAR ESTE ID EXACTO ***
+//   id-MP80QK94XKJERIT  (Cons 18)
+//   id-MPJCYUUZ7EQ6W9B  (Cons 32)
+//   id-MPJDT1I4L81REA2  (Cons 34)
+//
+
+/**
+ * Lista de ventas duplicadas a eliminar (SEGUNDO de cada par)
+ */
+const DUPLICADOS_IDS = [
+  'id-MOY046G46SW613H',
+  'id-MOY0QSFJA6U9B0L',
+  'id-MOZDCIHENJ6XXSO',
+  'id-MP80QK94XKJERIT',
+  'id-MPJCYUUZ7EQ6W9B',
+  'id-MPJDT1I4L81REA2',
+];
+
+/**
+ * FUNCIÓN PRINCIPAL DE LIMPIEZA
+ *
+ * @param {boolean} dryRun - Si true, solo retorna reporte sin eliminar nada
+ * @returns {Object} Reporte detallado
+ *
+ * EJEMPLOS DE USO:
+ *   cleanupDuplicateSales(true)  -> Solo muestra qué se eliminaría
+ *   cleanupDuplicateSales(false) -> EJECUTA la eliminación
+ */
+function cleanupDuplicateSales(dryRun = true) {
+  const ss = getSpreadsheet();
+  const sheetVentas = ss.getSheetByName(HOJA_VENTAS);
+  const sheetDetalle = ss.getSheetByName(HOJA_VENTAS_DETALLE);
+
+  if (!sheetVentas || !sheetDetalle) {
+    const errorResult = {
+      status: 'error',
+      message: 'Hojas Ventas o Ventas_Detalle no encontradas'
+    };
+    Logger.log(JSON.stringify(errorResult, null, 2));
+    return errorResult;
+  }
+
+  // PASO 1: Obtener datos actuales
+  const ventasData = sheetVentas.getDataRange().getValues();
+  const detalleData = sheetDetalle.getDataRange().getValues();
+
+  const ventaHeaders = ventasData[0];
+  const detalleHeaders = detalleData[0];
+
+  const ventaIdCol = ventaHeaders.indexOf('id_venta');
+  const detalleVentaIdCol = detalleHeaders.indexOf('id_venta');
+  const consecutivoCol = ventaHeaders.indexOf('consecutivo');
+  const fechaCol = ventaHeaders.indexOf('fecha');
+  const totalCol = ventaHeaders.indexOf('total_final');
+
+  if (ventaIdCol === -1 || detalleVentaIdCol === -1) {
+    const errorResult = {
+      status: 'error',
+      message: 'Columnas ID no encontradas en los headers'
+    };
+    Logger.log(JSON.stringify(errorResult, null, 2));
+    return errorResult;
+  }
+
+  // PASO 2: Verificar que los IDs a eliminar EXISTEN en Ventas
+  const ventasIdsExistentes = new Set();
+  for (let i = 1; i < ventasData.length; i++) {
+    ventasIdsExistentes.add(String(ventasData[i][ventaIdCol]));
+  }
+
+  const idsNoEncontrados = [];
+  for (const id of DUPLICADOS_IDS) {
+    if (!ventasIdsExistentes.has(id)) {
+      idsNoEncontrados.push(id);
+    }
+  }
+
+  if (idsNoEncontrados.length > 0) {
+    const errorResult = {
+      status: 'error',
+      message: 'Algunos IDs no fueron encontrados en la hoja Ventas',
+      idsNoEncontrados: idsNoEncontrados,
+      accion: 'Verificar estos IDs manualmente en Google Sheets'
+    };
+    Logger.log(JSON.stringify(errorResult, null, 2));
+    return errorResult;
+  }
+
+  // PASO 3: Encontrar filas de Ventas a eliminar
+  const filasVentasAEliminar = [];
+
+  for (let i = 1; i < ventasData.length; i++) {
+    const idVenta = String(ventasData[i][ventaIdCol]);
+    if (DUPLICADOS_IDS.includes(idVenta)) {
+      filasVentasAEliminar.push({
+        rowIndex: i + 1, // +1 porque las filas de Sheet son 1-indexed
+        idVenta: idVenta,
+        consecutivo: ventasData[i][consecutivoCol],
+        fecha: ventasData[i][fechaCol],
+        total: ventasData[i][totalCol]
+      });
+    }
+  }
+
+  // PASO 4: Encontrar filas de Ventas_Detalle a eliminar
+  const idsVentasAEliminar = new Set(DUPLICADOS_IDS);
+  const filasDetalleAEliminar = [];
+
+  for (let i = 1; i < detalleData.length; i++) {
+    const idVentaRelacion = String(detalleData[i][detalleVentaIdCol]);
+    if (idsVentasAEliminar.has(idVentaRelacion)) {
+      filasDetalleAEliminar.push({
+        rowIndex: i + 1,
+        idVenta: idVentaRelacion,
+        idDetalle: detalleData[i][0]
+      });
+    }
+  }
+
+  // MODO REPORTE (dry run)
+  if (dryRun === true) {
+    const dryRunResult = {
+      status: 'success',
+      modo: 'dryRun',
+      mensaje: '*** MODO SOLO LECTURA - No se eliminó nada ***',
+      resumen: {
+        ventasDuplicadasAEliminar: filasVentasAEliminar.length,
+        detallesAEliminar: filasDetalleAEliminar.length,
+        totalVentasActuales: ventasData.length - 1,
+        totalDetallesActuales: detalleData.length - 1
+      },
+      ventasAEliminar: filasVentasAEliminar,
+      detallesAEliminar: filasDetalleAEliminar,
+      despuesDeEliminar: {
+        ventasRestantes: ventasData.length - 1 - filasVentasAEliminar.length,
+        detallesRestantes: detalleData.length - 1 - filasDetalleAEliminar.length
+      }
+    };
+    Logger.log(JSON.stringify(dryRunResult, null, 2));
+    return dryRunResult;
+  }
+
+  // MODO EJECUCIÓN: Eliminar en orden correcto
+  try {
+    let eliminadosDetalle = 0;
+    let eliminadosVentas = 0;
+    const errores = [];
+
+    // Eliminar primero Ventas_Detalle (hijos) - de mayor rowIndex a menor para no desplazar
+    const detallesOrdenados = filasDetalleAEliminar.sort((a, b) => b.rowIndex - a.rowIndex);
+    for (const detalle of detallesOrdenados) {
+      try {
+        sheetDetalle.deleteRow(detalle.rowIndex);
+        eliminadosDetalle++;
+      } catch (e) {
+        errores.push(`Detalle ${detalle.idDetalle}: ${e.message}`);
+      }
+    }
+
+    // Eliminar luego Ventas (padres) - de mayor rowIndex a menor
+    const ventasOrdenadas = filasVentasAEliminar.sort((a, b) => b.rowIndex - a.rowIndex);
+    for (const venta of ventasOrdenadas) {
+      try {
+        sheetVentas.deleteRow(venta.rowIndex);
+        eliminadosVentas++;
+      } catch (e) {
+        errores.push(`Venta ${venta.idVenta}: ${e.message}`);
+      }
+    }
+
+    const successResult = {
+      status: 'success',
+      modo: 'ejecutado',
+      mensaje: '*** LIMPIEZA COMPLETADA ***',
+      eliminados: {
+        ventas: eliminadosVentas,
+        detalles: eliminadosDetalle
+      },
+      errores: errores.length > 0 ? errores : 'Ninguno'
+    };
+    Logger.log(JSON.stringify(successResult, null, 2));
+    return successResult;
+
+  } catch (e) {
+    const errorResult = {
+      status: 'error',
+      message: 'Error durante la eliminacion',
+      error: e.message
+    };
+    Logger.log(JSON.stringify(errorResult, null, 2));
+    return errorResult;
+  }
+}
+
+/**
+ * VERIFICAR IDs específicos en Sheets
+ * Útil para confirmar que los IDs existen antes de ejecutar la limpieza
+ */
+function verifyDuplicateIds() {
+  const ss = getSpreadsheet();
+  const sheetVentas = ss.getSheetByName(HOJA_VENTAS);
+
+  if (!sheetVentas) {
+    const errorResult = { status: 'error', message: 'Hoja Ventas no encontrada' };
+    Logger.log(JSON.stringify(errorResult, null, 2));
+    return errorResult;
+  }
+
+  const data = sheetVentas.getDataRange().getValues();
+  const headers = data[0];
+  const idCol = headers.indexOf('id_venta');
+  const consecutivoCol = headers.indexOf('consecutivo');
+  const totalCol = headers.indexOf('total_final');
+  const fechaCol = headers.indexOf('fecha');
+
+  const resultados = [];
+
+  for (const id of DUPLICADOS_IDS) {
+    const fila = data.findIndex((row, i) => i > 0 && String(row[idCol]) === id);
+    if (fila !== -1) {
+      resultados.push({
+        id: id,
+        encontrado: true,
+        consecutivo: data[fila][consecutivoCol],
+        fecha: data[fila][fechaCol],
+        total: data[fila][totalCol],
+        fila: fila + 1
+      });
+    } else {
+      resultados.push({
+        id: id,
+        encontrado: false
+      });
+    }
+  }
+
+  const resultado = {
+    status: 'success',
+    duplicadosConfigurados: DUPLICADOS_IDS.length,
+    encontradosEnHoja: resultados.filter(r => r.encontrado).length,
+    noEncontrados: resultados.filter(r => !r.encontrado).map(r => r.id),
+    detalle: resultados
+  };
+  Logger.log(JSON.stringify(resultado, null, 2));
+  return resultado;
 }
