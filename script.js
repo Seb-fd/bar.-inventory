@@ -5818,8 +5818,8 @@ async function prepararCierreCaja() {
     // Calcular gastos del día por método de pago
     if (gastosData.status === "success" && gastosData.data) {
       gastosData.data.forEach((g) => {
-        const fechaGasto = new Date(g.fecha).toLocaleDateString();
-        if (fechaGasto === hoy) {
+        const fechaGastoISO = new Date(g.fecha).toISOString().split("T")[0];
+        if (fechaGastoISO === hoyISO) {
           const monto = parseFloat(g.monto) || 0;
           const metodo = String(g.metodo_pago || "").toLowerCase();
 
@@ -5836,8 +5836,8 @@ async function prepararCierreCaja() {
     // Calcular aprovechamientos del día por método de pago
     if (aprovechosData.status === "success" && aprovechosData.data) {
       aprovechosData.data.forEach((a) => {
-        const fechaAprovecho = new Date(a.fecha).toLocaleDateString();
-        if (fechaAprovecho === hoy) {
+        const fechaAprovechoISO = new Date(a.fecha).toISOString().split("T")[0];
+        if (fechaAprovechoISO === hoyISO) {
           const monto = parseFloat(a.monto) || 0;
           const metodo = String(a.metodo_pago || "").toLowerCase();
 
