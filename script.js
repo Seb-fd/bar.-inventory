@@ -4318,7 +4318,7 @@ async function mostrarFactura(idVenta) {
         <div class="factura-business-name">The Hermit Cocktail Bar</div>
         <div class="factura-nit">NIT: 1085327746</div>
         <div class="factura-address">Dirección: Calle 11 #36 - 06</div>
-        <div class="factura-whatsapp">WhatsApp: 316 785 2058</div>
+        <div class="factura-whatsapp">WhatsApp: 314 239 3553</div>
         <div class="factura-iva">No somos responsables de IVA</div>
       </div>
 
@@ -4547,7 +4547,7 @@ function mostrarFacturaDesdeDatos(venta, items) {
       <div class="factura-business-name">The Hermit Cocktail Bar</div>
       <div class="factura-nit">NIT: 1085327746</div>
       <div class="factura-address">Dirección: Calle 11 #36 - 06</div>
-      <div class="factura-whatsapp">WhatsApp: 316 785 2058</div>
+      <div class="factura-whatsapp">WhatsApp: 314 239 3553</div>
       <div class="factura-iva">No somos responsables de IVA</div>
     </div>
 
@@ -6488,7 +6488,7 @@ async function mostrarCompra(idCompra) {
       <div class="factura-business-name">The Hermit Cocktail Bar</div>
       <div class="factura-nit">NIT: 1085327746</div>
       <div class="factura-address">Dirección: Calle 11 #36 - 06</div>
-      <div class="factura-whatsapp">WhatsApp: 316 785 2058</div>
+      <div class="factura-whatsapp">WhatsApp: 314 239 3553</div>
       <div class="factura-iva">No somos responsables de IVA</div>
     </div>
 
